@@ -1,0 +1,438 @@
+---
+title: 'Periodic Tasks'
+description: 'Automated periodic messaging system'
+icon: 'clock'
+---
+
+## Overview
+
+ChimBot includes a periodic task system that automatically sends random messages to a designated spam channel at scheduled intervals. This feature uses Discord.py's `@tasks.loop()` decorator to run recurring tasks.
+
+<Note>
+The periodic spam system is **disabled by default** and must be manually activated using the `$activarspam` command.
+</Note>
+
+## Core Function
+
+The `spam_periodico()` task runs on a scheduled interval:
+
+```python main.py
+@tasks.loop(hours=12)  # Executes every 12 hours (2 times per day)
+async def spam_periodico():
+    """Envía un mensaje random al canal de spam periódicamente"""
+    try:
+        canal = bot.get_channel(CANAL_SPAM_ID)
+        if canal:
+            mensaje = obtener_mensaje_sin_repetir()
+            await canal.send(mensaje)
+            print(f"[{datetime.now().strftime('%H:%M:%S')}] Mensaje automático enviado: {mensaje[:50]}...")
+    except Exception as e:
+        print(f"Error en spam_periodico: {e}")
+```
+
+## Configuration
+
+### Basic Settings
+
+```python main.py
+# Target channel for periodic messages
+CANAL_SPAM_ID = 1004171793101230151
+
+# Frequency: 12 hours (runs 2x per day)
+@tasks.loop(hours=12)
+```
+
+### Custom Intervals
+
+You can adjust the interval to your needs:
+
+<Tabs>
+  <Tab title="Every Hour">
+    ```python
+    @tasks.loop(hours=1)
+    async def spam_periodico():
+        # Runs every hour
+    ```
+  </Tab>
+
+  <Tab title="Every 30 Minutes">
+    ```python
+    @tasks.loop(minutes=30)
+    async def spam_periodico():
+        # Runs every 30 minutes
+    ```
+  </Tab>
+
+  <Tab title="Every 6 Hours">
+    ```python
+    @tasks.loop(hours=6)
+    async def spam_periodico():
+        # Runs 4 times per day
+    ```
+  </Tab>
+
+  <Tab title="Daily at Specific Time">
+    ```python
+    from datetime import time
+    
+    @tasks.loop(time=time(hour=12, minute=0))  # Noon every day
+    async def spam_periodico():
+        # Runs once per day at 12:00 PM
+    ```
+  </Tab>
+</Tabs>
+
+## Message Management
+
+ChimBot uses a non-repeating message system to ensure variety:
+
+### Message Pool
+
+```python main.py
+# List of random messages
+mensajes_random = [
+    # Example: "your message here",
+    # Example: "another message",
+]
+
+# System to avoid repetition
+mensajes_disponibles = []
+```
+
+### Non-Repeating Algorithm
+
+```python main.py
+def obtener_mensaje_sin_repetir():
+    """Obtiene un mensaje random sin repetir hasta que se agoten todos"""
+    global mensajes_disponibles
+    
+    # If no messages configured, return error message
+    if not mensajes_random:
+        return "No hay mensajes configurados. Agrega mensajes a la lista 'mensajes_random' en el código."
+    
+    # If all messages used, reset the list
+    if not mensajes_disponibles:
+        mensajes_disponibles = mensajes_random.copy()
+        random.shuffle(mensajes_disponibles)
+    
+    # Get and remove a message
+    return mensajes_disponibles.pop()
+```
+
+<Accordion title="How It Works">
+  1. **Initial Pool**: Copies all messages from `mensajes_random`
+  2. **Shuffle**: Randomizes the order to prevent predictability
+  3. **Pop**: Removes and returns one message at a time
+  4. **Reset**: When the pool is empty, refills and shuffles again
+  5. **No Repeats**: Guarantees all messages are used before any repeat
+</Accordion>
+
+## Startup Behavior
+
+The task system includes a pre-loop hook to ensure proper initialization:
+
+```python main.py
+@spam_periodico.before_loop
+async def antes_de_spam():
+    """Espera a que el bot esté listo antes de iniciar el loop"""
+    await bot.wait_until_ready()
+    print("Sistema de spam periódico iniciado (PAUSADO por defecto)")
+    print("Usa $activarspam para activarlo después de probar con $testspam")
+```
+
+<Note>
+The task waits for the bot to fully connect to Discord before starting. This prevents errors from trying to access channels before the bot is ready.
+</Note>
+
+## Control Commands
+
+### Activate Spam
+
+```python main.py
+@bot.command(name='activarspam')
+@commands.has_permissions(administrator=True)
+async def activar_spam(ctx):
+    """Activa el sistema de spam automático (solo admins)"""
+    if not mensajes_random:
+        await ctx.send("**ERROR:** No hay mensajes configurados. Agrega mensajes primero.")
+        return
+    
+    if spam_periodico.is_running():
+        await ctx.send("El spam automático ya está activo.")
+    else:
+        spam_periodico.start()
+        await ctx.send("Spam automático **ACTIVADO**. Se enviará un mensaje cada 12 horas.")
+        print(f"[ADMIN] Spam automático activado por {ctx.author}")
+```
+
+### Deactivate Spam
+
+```python main.py
+@bot.command(name='desactivarspam')
+@commands.has_permissions(administrator=True)
+async def desactivar_spam(ctx):
+    """Desactiva el sistema de spam automático (solo admins)"""
+    if spam_periodico.is_running():
+        spam_periodico.cancel()
+        await ctx.send("Spam automático **DESACTIVADO**.")
+        print(f"[ADMIN] Spam automático desactivado por {ctx.author}")
+    else:
+        await ctx.send("El spam automático ya está desactivado.")
+```
+
+### Check Status
+
+```python main.py
+@bot.command(name='statusspam')
+async def status_spam(ctx):
+    """Muestra el estado del sistema de spam"""
+    estado = "**ACTIVO**" if spam_periodico.is_running() else "**INACTIVO**"
+    mensajes_totales = len(mensajes_random)
+    mensajes_restantes = len(mensajes_disponibles)
+    
+    info = f"""**Estado del Sistema de Spam:**
+{estado}
+Mensajes configurados: {mensajes_totales}
+Mensajes restantes en ciclo: {mensajes_restantes}
+Frecuencia: Cada 12 horas
+Canal: <#{CANAL_SPAM_ID}>"""
+    
+    await ctx.send(info)
+```
+
+### Test Spam
+
+```python main.py
+@bot.command(name='testspam')
+async def test_spam(ctx):
+    """Comando para probar el sistema de spam manualmente"""
+    if not mensajes_random:
+        await ctx.send("**ERROR:** No hay mensajes configurados. Agrega mensajes a la lista en el código primero.")
+        return
+    
+    canal = bot.get_channel(CANAL_SPAM_ID)
+    if canal:
+        mensaje = obtener_mensaje_sin_repetir()
+        await canal.send(mensaje)
+        await ctx.send(f"Mensaje de prueba enviado a <#{CANAL_SPAM_ID}>")
+        print(f"[TEST] Mensaje enviado: {mensaje[:50]}...")
+    else:
+        await ctx.send("No se encontró el canal de spam.")
+```
+
+## Setup Guide
+
+<Steps>
+  <Step title="Add Messages">
+    Edit `main.py` and add your messages to the list:
+
+    ```python
+    mensajes_random = [
+        "First message",
+        "Second message",
+        "Third message",
+        # Add as many as you want
+    ]
+    ```
+  </Step>
+  
+  <Step title="Test Messages">
+    Run a test to verify messages are working:
+
+    ```bash
+    $testspam
+    ```
+    
+    Check the spam channel for the test message.
+  </Step>
+  
+  <Step title="Activate System">
+    Once satisfied with the messages, activate the periodic task:
+
+    ```bash
+    $activarspam
+    ```
+  </Step>
+  
+  <Step title="Monitor Status">
+    Check the system status anytime:
+
+    ```bash
+    $statusspam
+    ```
+  </Step>
+</Steps>
+
+## AI-Powered Commands
+
+The periodic task can also be controlled via natural language when mentioning the bot:
+
+```python
+# User: "@ChimBot activate the spam"
+# Bot interprets and executes: $activarspam
+
+# User: "@ChimBot turn off spam"
+# Bot interprets and executes: $desactivarspam
+
+# User: "@ChimBot send a test message"
+# Bot interprets and executes: $testspam
+```
+
+This is handled by the `interpretar_instruccion_ia()` function:
+
+```python main.py
+async def interpretar_instruccion_ia(texto, user_id):
+    """Usa IA para interpretar si un mensaje contiene una instrucción de comando"""
+    prompt_interpretacion = f"""Analiza este mensaje y determina si es una INSTRUCCIÓN para ejecutar un comando del bot.
+    
+    Responde SOLO con uno de estos formatos:
+    - "COMANDO:activarspam" si pide activar spam automático
+    - "COMANDO:desactivarspam" si pide desactivar spam
+    - "COMANDO:statusspam" si pide ver estado del spam
+    - "COMANDO:testspam" si pide enviar un mensaje de prueba
+    - "NO_COMANDO" si es una conversación normal sin instrucciones
+    
+    Mensaje: {texto}"""
+    # ... (uses Groq to interpret)
+```
+
+## Usage Examples
+
+<CodeGroup>
+
+```bash Basic Commands
+# Test the system
+$testspam
+
+# Check current status
+$statusspam
+
+# Activate (admin only)
+$activarspam
+
+# Deactivate (admin only)
+$desactivarspam
+```
+
+```bash AI Commands
+# Via natural language
+@ChimBot send a spam test
+@ChimBot what's the status of the spam system?
+@ChimBot enable automatic spam
+@ChimBot stop the spam
+```
+
+</CodeGroup>
+
+## Console Output
+
+The periodic task logs all activity:
+
+```bash
+# Startup
+Sistema de spam periódico iniciado (PAUSADO por defecto)
+Usa $activarspam para activarlo después de probar con $testspam
+
+# When activated
+[ADMIN] Spam automático activado por AdminUser
+
+# When message is sent
+[14:30:45] Mensaje automático enviado: First message...
+
+# Test messages
+[TEST] Mensaje enviado: Test message...
+
+# When deactivated
+[ADMIN] Spam automático desactivado por AdminUser
+```
+
+## Advanced Customization
+
+### Multiple Intervals
+
+Create different periodic tasks for different purposes:
+
+```python
+@tasks.loop(hours=12)
+async def spam_periodico():
+    # Spam channel - every 12 hours
+    canal = bot.get_channel(CANAL_SPAM_ID)
+    await canal.send(obtener_mensaje_sin_repetir())
+
+@tasks.loop(hours=24)
+async def daily_reminder():
+    # Reminder channel - once per day
+    canal = bot.get_channel(REMINDER_CHANNEL_ID)
+    await canal.send("Don't forget to check announcements!")
+
+@tasks.loop(minutes=30)
+async def status_update():
+    # Status update - every 30 minutes
+    await bot.change_presence(activity=discord.Game(name="with periodic tasks"))
+```
+
+### Dynamic Messages
+
+Generate messages dynamically instead of using a static list:
+
+```python
+@tasks.loop(hours=12)
+async def spam_periodico():
+    canal = bot.get_channel(CANAL_SPAM_ID)
+    if canal:
+        # Dynamic message with current info
+        mensaje = f"Server has {len(canal.guild.members)} members! 🎉"
+        await canal.send(mensaje)
+```
+
+### Conditional Execution
+
+Only run tasks at certain times or conditions:
+
+```python
+from datetime import datetime
+
+@tasks.loop(hours=1)
+async def spam_periodico():
+    # Only send during business hours (9 AM - 5 PM)
+    current_hour = datetime.now().hour
+    if 9 <= current_hour <= 17:
+        canal = bot.get_channel(CANAL_SPAM_ID)
+        await canal.send(obtener_mensaje_sin_repetir())
+```
+
+## Error Handling
+
+The task includes basic error handling:
+
+```python
+try:
+    canal = bot.get_channel(CANAL_SPAM_ID)
+    if canal:
+        mensaje = obtener_mensaje_sin_repetir()
+        await canal.send(mensaje)
+except Exception as e:
+    print(f"Error en spam_periodico: {e}")
+```
+
+<Warning>
+If the channel doesn't exist or the bot lacks permissions, errors will be logged to console but the task will continue running.
+</Warning>
+
+## Required Permissions
+
+<Card title="Bot Permissions" icon="key">
+  - **View Channel** - Access the spam channel
+  - **Send Messages** - Post periodic messages
+  - **Read Message History** - Verify message delivery
+</Card>
+
+## Best Practices
+
+<Check>**Do**: Test with `$testspam` before activating the periodic task</Check>
+<Check>**Do**: Add at least 10-20 messages to avoid repetition feeling stale</Check>
+<Check>**Do**: Set reasonable intervals (12-24 hours recommended)</Check>
+<Check>**Do**: Use a dedicated spam channel, not general chat</Check>
+<Check>**Don't**: Set intervals too short (< 1 hour can be annoying)</Check>
+<Check>**Don't**: Leave the message list empty (causes error messages)</Check>
+<Check>**Don't**: Spam channels with actual conversations happening</Check>

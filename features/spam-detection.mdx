@@ -1,0 +1,276 @@
+---
+title: 'Spam Detection'
+description: 'Automatic spam detection and moderation system'
+icon: 'shield-halved'
+---
+
+## Overview
+
+ChimBot includes a sophisticated spam detection system that automatically identifies and moderates users who send messages too quickly or repeat the same content. The system uses two detection methods:
+
+<CardGroup cols={2}>
+  <Card title="Rapid Fire Detection" icon="gauge-high">
+    Detects users sending too many messages in a short time period
+  </Card>
+  <Card title="Repetition Detection" icon="repeat">
+    Identifies users sending the same message multiple times
+  </Card>
+</CardGroup>
+
+## Configuration
+
+The spam detection system is configured with these constants:
+
+```python main.py
+# Spam detection configuration
+LIMITE_MENSAJES = 4          # How many messages in a row
+TIEMPO_LIMITE = 4            # Within how many seconds
+LIMITE_REPETICIONES = 3      # How many times the same message
+
+# Channel where spam is allowed
+CANAL_SPAM_ID = 1004171793101230151
+```
+
+<Note>
+Spam detection is **disabled** in the designated spam channel (`CANAL_SPAM_ID`), allowing users to freely spam there without consequences.
+</Note>
+
+## Detection Functions
+
+### Rapid Message Detection
+
+The `detectar_spam_rapido()` function tracks message timestamps:
+
+```python main.py
+def detectar_spam_rapido(user_id, timestamp):
+    """Detecta si un usuario está enviando mensajes demasiado rápido"""
+    data = spam_contador[user_id]
+    
+    # Agregar timestamp actual
+    data['mensajes'].append(timestamp)
+    
+    # Limpiar timestamps antiguos (más de TIEMPO_LIMITE segundos)
+    tiempo_limite = timestamp - TIEMPO_LIMITE
+    data['mensajes'] = [t for t in data['mensajes'] if t > tiempo_limite]
+    
+    # Verificar si superó el límite
+    return len(data['mensajes']) >= LIMITE_MENSAJES
+```
+
+<Accordion title="How It Works">
+  1. **Track Timestamps**: Each message timestamp is stored in a user-specific list
+  2. **Clean Old Data**: Timestamps older than `TIEMPO_LIMITE` (4 seconds) are removed
+  3. **Count Recent Messages**: If 4+ messages exist in the last 4 seconds, spam is detected
+  4. **Auto-Reset**: The sliding window automatically clears old messages
+</Accordion>
+
+### Repetition Detection
+
+The `detectar_spam_repetido()` function analyzes message content:
+
+```python main.py
+def detectar_spam_repetido(user_id, texto):
+    """Detecta si un usuario está enviando el mismo mensaje repetidamente"""
+    data = spam_contador[user_id]
+    
+    # Agregar texto actual
+    data['ultimos_textos'].append(texto.lower().strip())
+    
+    # Mantener solo los últimos 10 mensajes
+    if len(data['ultimos_textos']) > 10:
+        data['ultimos_textos'].pop(0)
+    
+    # Contar cuántas veces aparece el mismo mensaje
+    if len(data['ultimos_textos']) >= LIMITE_REPETICIONES:
+        ultimo_texto = data['ultimos_textos'][-1]
+        count = data['ultimos_textos'].count(ultimo_texto)
+        return count >= LIMITE_REPETICIONES
+    
+    return False
+```
+
+<Accordion title="How It Works">
+  1. **Normalize Text**: Convert to lowercase and strip whitespace for comparison
+  2. **Store History**: Keep the last 10 messages from each user
+  3. **Count Duplicates**: Check if the same message appears 3+ times
+  4. **Sliding Buffer**: Automatically maintains a 10-message window per user
+</Accordion>
+
+## User Moderation
+
+When spam is detected, ChimBot automatically applies a timeout:
+
+```python main.py
+async def silenciar_usuario(member, duracion_segundos=10):
+    """Aplica timeout a un usuario por X segundos"""
+    try:
+        duracion = timedelta(seconds=duracion_segundos)
+        await member.timeout(duracion, reason="Spam detectado")
+        return True
+    except discord.Forbidden:
+        print(f"No tengo permisos para silenciar a {member.name}")
+        return False
+    except Exception as e:
+        print(f"Error al silenciar: {e}")
+        return False
+```
+
+<Warning>
+The bot requires the **Moderate Members** permission to timeout users. Without this permission, it will delete the spam message and send a warning instead.
+</Warning>
+
+## Spam Detection Flow
+
+<Steps>
+  <Step title="Message Received">
+    User sends a message in any channel (except spam channel)
+  </Step>
+  
+  <Step title="Rapid Fire Check">
+    Bot checks if user sent 4+ messages in 4 seconds
+    
+    If detected:
+    - Delete the message
+    - Apply 10-second timeout
+    - Send warning: "SILENCIADO por 10 segundos por spam"
+  </Step>
+  
+  <Step title="Repetition Check">
+    Bot checks if user sent the same message 3+ times
+    
+    If detected:
+    - Delete the message
+    - Apply 10-second timeout
+    - Send warning: "SILENCIADO por 10 segundos por enviar mensajes repetidos"
+  </Step>
+  
+  <Step title="Counter Reset">
+    Clear spam counters to prevent bot from spamming warnings
+  </Step>
+</Steps>
+
+## Implementation Example
+
+Here's how spam detection is integrated into the `on_message` event:
+
+```python main.py
+@bot.event
+async def on_message(message):
+    # Ignore bot messages
+    if message.author == bot.user:
+        return
+    
+    # Skip spam detection in spam channel
+    if message.channel.id != CANAL_SPAM_ID:
+        user_id = message.author.id
+        timestamp = message.created_at.timestamp()
+        
+        # 1. Detect rapid messages
+        if detectar_spam_rapido(user_id, timestamp):
+            # Silence user
+            silenciado = await silenciar_usuario(message.author, 10)
+            
+            # Delete the current message
+            try:
+                await message.delete()
+            except discord.Forbidden:
+                pass
+            
+            if silenciado:
+                await message.channel.send(
+                    f"{message.author.mention} **SILENCIADO por 10 segundos** por spam. "
+                    f"Vaya a <#{CANAL_SPAM_ID}> si quiere hacer spam.",
+                    delete_after=5
+                )
+            else:
+                await message.channel.send(
+                    f"{message.author.mention} Deje de SPAMEARRRRRRRRRRRRR "
+                    f"Larguese al canal de <#{CANAL_SPAM_ID}> para spam.",
+                    delete_after=5
+                )
+            spam_contador[user_id]['mensajes'] = []  # Clear to avoid bot spam
+        
+        # 2. Detect repeated messages
+        if message.content and detectar_spam_repetido(user_id, message.content):
+            # Similar handling as above...
+```
+
+## Data Structures
+
+ChimBot uses a `defaultdict` to track spam data per user:
+
+```python
+from collections import defaultdict
+
+# Counters (reset automatically)
+spam_contador = defaultdict(lambda: {'mensajes': [], 'ultimos_textos': []})
+
+# Structure:
+# spam_contador[user_id] = {
+#     'mensajes': [timestamp1, timestamp2, ...],      # Last message times
+#     'ultimos_textos': ['text1', 'text2', ...]       # Last 10 messages
+# }
+```
+
+## Customization
+
+<Tabs>
+  <Tab title="Adjust Sensitivity">
+    Make detection more or less strict:
+
+    ```python
+    # More strict (trigger faster)
+    LIMITE_MENSAJES = 3          # 3 messages instead of 4
+    TIEMPO_LIMITE = 5            # In 5 seconds instead of 4
+    LIMITE_REPETICIONES = 2      # 2 repeats instead of 3
+    
+    # Less strict (more lenient)
+    LIMITE_MENSAJES = 5          # 5 messages
+    TIEMPO_LIMITE = 3            # In 3 seconds
+    LIMITE_REPETICIONES = 4      # 4 repeats
+    ```
+  </Tab>
+
+  <Tab title="Change Timeout Duration">
+    Adjust how long users are silenced:
+
+    ```python
+    # Longer timeout (30 seconds)
+    silenciado = await silenciar_usuario(message.author, 30)
+    
+    # Shorter timeout (5 seconds)
+    silenciado = await silenciar_usuario(message.author, 5)
+    ```
+  </Tab>
+
+  <Tab title="Custom Messages">
+    Customize warning messages:
+
+    ```python
+    await message.channel.send(
+        f"{message.author.mention} Stop spamming! "
+        f"Use <#{CANAL_SPAM_ID}> for spam.",
+        delete_after=5
+    )
+    ```
+  </Tab>
+</Tabs>
+
+## Required Permissions
+
+<Card title="Bot Permissions" icon="key">
+  - **Manage Messages** - Delete spam messages
+  - **Moderate Members** - Apply timeouts to spammers
+  - **Send Messages** - Send warning notifications
+  - **Read Message History** - Track message patterns
+</Card>
+
+Use the `$permisos` command to verify the bot has these permissions.
+
+## Best Practices
+
+<Check>**Do**: Set up a dedicated spam channel where detection is disabled</Check>
+<Check>**Do**: Test thresholds with your community's typical message patterns</Check>
+<Check>**Do**: Monitor false positives and adjust limits accordingly</Check>
+<Check>**Don't**: Set limits too strict (may punish legitimate fast typers)</Check>
+<Check>**Don't**: Set timeouts too long (10-30 seconds is usually enough)</Check>

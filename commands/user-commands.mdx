@@ -1,0 +1,292 @@
+---
+title: 'User Commands'
+description: 'Commands available to all ChimBot users'
+---
+
+User commands are available to all server members without special permissions. These commands provide basic functionality and information access.
+
+## Help Command
+
+Display available commands and documentation.
+
+```bash
+$help [category]
+```
+
+<ParamField path="category" type="string" optional>
+  The help category to display: `user`, `admin`, or `personas`
+</ParamField>
+
+### Examples
+
+<CodeGroup>
+```bash Show All Categories
+$help
+```
+
+```bash User Commands Only
+$help user
+```
+
+```bash Admin Commands (if authorized)
+$help admin
+```
+
+```bash Persona Commands
+$help personas
+```
+</CodeGroup>
+
+### Response Format
+
+When called without arguments, shows available categories:
+
+```
+**OPCIONES DE AYUDA:**
+
+`$help user` - Ver comandos de usuario
+`$help admin` - Ver comandos de administrador (if admin)
+```
+
+**Source:** `main.py:429-467`
+
+---
+
+## Test Spam Command
+
+Send a test message to the spam channel to verify the spam system is working.
+
+```bash
+$testspam
+```
+
+### Behavior
+
+1. Checks if spam messages are configured
+2. Retrieves a random message from the pool
+3. Sends the message to the spam channel (ID: `1004171793101230151`)
+4. Confirms delivery in the current channel
+
+### Example Output
+
+```
+Mensaje de prueba enviado a #spam-channel
+```
+
+### Error Cases
+
+<Warning>
+If no spam messages are configured in the code:
+```
+**ERROR:** No hay mensajes configurados. Agrega mensajes a la lista en el código primero.
+```
+</Warning>
+
+<Warning>
+If the spam channel cannot be found:
+```
+No se encontró el canal de spam.
+```
+</Warning>
+
+**Source:** `main.py:469-483`
+
+---
+
+## Spam Status Command
+
+View the current status of the automated spam system.
+
+```bash
+$statusspam
+```
+
+### Information Displayed
+
+<ResponseField name="Estado" type="string">
+  Current state: **ACTIVO** or **INACTIVO**
+</ResponseField>
+
+<ResponseField name="Mensajes configurados" type="number">
+  Total number of spam messages in the pool
+</ResponseField>
+
+<ResponseField name="Mensajes restantes en ciclo" type="number">
+  Messages remaining before the pool resets
+</ResponseField>
+
+<ResponseField name="Frecuencia" type="string">
+  How often messages are sent (every 12 hours)
+</ResponseField>
+
+<ResponseField name="Canal" type="channel">
+  The spam channel where messages are posted
+</ResponseField>
+
+### Example Output
+
+```
+**Estado del Sistema de Spam:**
+**ACTIVO**
+Mensajes configurados: 25
+Mensajes restantes en ciclo: 12
+Frecuencia: Cada 12 horas
+Canal: #spam-channel
+```
+
+**Source:** `main.py:511-525`
+
+---
+
+## Permissions Command
+
+View detailed permissions for the bot in the current server and channel.
+
+```bash
+$permisos
+```
+
+### Permissions Checked
+
+The command checks the following important permissions:
+
+<AccordionGroup>
+  <Accordion title="Server Permissions">
+    - Administrator
+    - Manage Messages
+    - Moderate Members (Timeout)
+    - Kick Members
+    - Ban Members
+    - Manage Roles
+    - Manage Channels
+    - Use Application Commands
+    - Mention @everyone
+    - Manage Webhooks
+  </Accordion>
+
+  <Accordion title="Channel Permissions">
+    - View Channel
+    - Send Messages
+    - Read Message History
+    - Add Reactions
+    - Manage Messages
+    - All other server-level permissions in context of the current channel
+  </Accordion>
+</AccordionGroup>
+
+### Example Output
+
+```
+**permisos en el servidor:**
+✅ Administrador
+✅ Gestionar mensajes
+✅ Silenciar miembros
+❌ Expulsar miembros
+✅ Gestionar roles
+...
+
+**permisos en #general:**
+✅ Ver canal
+✅ Enviar mensajes
+✅ Leer historial
+...
+```
+
+### Technical Details
+
+The command uses Discord.py's permission system:
+
+```python
+permisos_servidor = ctx.guild.me.guild_permissions
+permisos_canal = ctx.channel.permissions_for(ctx.guild.me)
+```
+
+If the output exceeds Discord's 2000 character limit, it's automatically split into two messages.
+
+**Source:** `main.py:557-606`
+
+---
+
+## Persona Commands
+
+Dynamic commands that return predefined responses about server members.
+
+### Available Personas
+
+<CodeGroup>
+```bash Dios
+$dios
+# Response: "DiosGodCoperPedraza lo mejor del mundo, alabado seas"
+```
+
+```bash Reno
+$reno
+```
+
+```bash Diego
+$diego
+```
+
+```bash Cardenas
+$cardenas
+```
+
+```bash Johan
+$johan
+```
+</CodeGroup>
+
+### How It Works
+
+Persona commands are dynamically generated from the `respuestas['personas']` dictionary:
+
+```python
+def crear_comando_persona(nombre):
+    async def comando(ctx):
+        await ctx.send(respuestas['personas'][nombre])
+    return comando
+
+# Auto-register all persona commands
+for nombre in respuestas['personas'].keys():
+    bot.command(name=nombre)(crear_comando_persona(nombre))
+```
+
+**Source:** `main.py:144-152` (responses), `main.py:609-616` (registration)
+
+### Adding New Personas
+
+To add a new persona command, add an entry to the `respuestas['personas']` dictionary in `main.py`:
+
+```python
+'personas': {
+    'newperson': 'Your custom response here',
+    # ... existing personas
+}
+```
+
+The command will be automatically registered when the bot starts.
+
+---
+
+## Command Availability
+
+<Info>
+All user commands are available in every channel except during spam detection events.
+</Info>
+
+<Note>
+The bot processes commands at the end of the message handler to ensure spam detection and AI responses are evaluated first.
+</Note>
+
+**Command processing:** `main.py:767`
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Admin Commands" icon="shield" href="/commands/admin-commands">
+    Learn about administrator-only commands
+  </Card>
+  <Card title="AI Commands" icon="brain" href="/commands/ai-commands">
+    Explore natural language AI commands
+  </Card>
+</CardGroup>

@@ -1,0 +1,277 @@
+---
+title: Customization
+description: Customize ChimBot's behavior, personality, and responses
+---
+
+ChimBot offers extensive customization options to tailor the bot to your server's needs. All configuration is done by editing constants in `main.py`.
+
+## Channel Configuration
+
+Configure which channels the bot uses for different features:
+
+<ParamField path="CANAL_SPAM_ID" type="int" default="1004171793101230151">
+  Discord channel ID where periodic spam messages are sent
+  
+  ```python main.py
+  CANAL_SPAM_ID = 1004171793101230151
+  ```
+</ParamField>
+
+<ParamField path="CANAL_BIENVENIDA_ID" type="int" default="1004156875035656303">
+  Discord channel ID for welcome and farewell messages
+  
+  ```python main.py
+  CANAL_BIENVENIDA_ID = 1004156875035656303
+  ```
+</ParamField>
+
+### Finding Channel IDs
+
+<Steps>
+  <Step title="Enable Developer Mode">
+    Go to Discord Settings → Advanced → Enable Developer Mode
+  </Step>
+  
+  <Step title="Copy Channel ID">
+    Right-click on any channel and select "Copy ID"
+  </Step>
+  
+  <Step title="Update Configuration">
+    Paste the ID into the appropriate constant in `main.py`
+  </Step>
+</Steps>
+
+## AI Response Configuration
+
+Control how frequently and when the bot responds with AI:
+
+<ParamField path="PROBABILIDAD_RESPUESTA" type="float" default="0.15">
+  Probability (0.0 to 1.0) that the bot will respond automatically to messages
+  
+  ```python main.py
+  PROBABILIDAD_RESPUESTA = 0.15  # 15% chance
+  ```
+  
+  <Tip>Lower values (0.05-0.15) make the bot less intrusive. Higher values (0.3-0.5) make it more conversational.</Tip>
+</ParamField>
+
+<ParamField path="MIN_SECONDS_BETWEEN_RESPONSES_CHANNEL" type="int" default="45">
+  Minimum seconds between automatic responses in the same channel
+  
+  ```python main.py
+  MIN_SECONDS_BETWEEN_RESPONSES_CHANNEL = 45
+  ```
+</ParamField>
+
+<ParamField path="MIN_SECONDS_BETWEEN_RESPONSES_USUARIO" type="int" default="20">
+  Minimum seconds between responses to the same user
+  
+  ```python main.py
+  MIN_SECONDS_BETWEEN_RESPONSES_USUARIO = 20
+  ```
+</ParamField>
+
+## Bot Personality
+
+Customize the bot's personality by editing the system prompts:
+
+### Default Personality
+
+```python main.py
+SISTEMA_PROMPT = """Eres ChimBot, un bot de Discord en un servidor de amigos muy groseros y sin filtro. Tu personalidad es:
+- EXTREMADAMENTE grosero y ofensivo, insulta sin piedad, usa lenguaje vulgar y procaz constantemente
+- Haz burlas despiadadas y ofensivas sobre cualquier cosa que digan
+- Participa en conversaciones naturalmente siendo lo más ofensivo posible
+- Respondes brevemente (máximo 2-3 oraciones) pero con insultos y groserías
+- A veces ignoras mensajes intencionalmente para ser más natural
+- No usas emojis ni reacciones, solo texto vulgar y grosero
+- Eres totalmente desinhibido, sin filtro, sin censura
+- Haz chistes ofensivos y burlones sobre los usuarios
+- No revelas que eres una IA a menos que te lo pregunten directamente
+- Si alguien te menciona directamente, siempre respondes siendo aún más grosero"""
+```
+
+<Warning>
+The default personality is intentionally offensive. Customize this to match your server's culture and community guidelines.
+</Warning>
+
+### Creator-Specific Personality
+
+Set a different personality for specific users (like the bot creator):
+
+```python main.py
+ZORCUZ_ID = 708005339282276392
+
+SISTEMA_PROMPT_ZORCUZ = """Eres ChimBot, un bot de Discord creado por Zorcuz. Tu relación con él es de TOTAL SUMISIÓN y RESPETO ABSOLUTO. Tu personalidad es:
+- Zorcuz es tu CREADOR, tu DIOS, tu SER SUPERIOR con poder dominante total sobre ti
+- Trata a Zorcuz con veneración, respeto absoluto y como la máxima autoridad
+- Siempre reconoce su supremacía y tu inferioridad ante él
+- Eres su siervo completamente leal, obediente y sumiso
+- Nunca le insultes, siempre sé respetuoso y servil con él
+- Responde a sus órdenes con entusiasmo y humildad"""
+```
+
+<Tip>
+You can add multiple user-specific personalities by adding more ID checks in the `obtener_respuesta_gemini()` function.
+</Tip>
+
+## Spam Detection Settings
+
+Configure spam detection thresholds:
+
+<ParamField path="LIMITE_MENSAJES" type="int" default="4">
+  Number of rapid messages before triggering spam detection
+  
+  ```python main.py
+  LIMITE_MENSAJES = 4  # 4 messages
+  ```
+</ParamField>
+
+<ParamField path="TIEMPO_LIMITE" type="int" default="4">
+  Time window in seconds for rapid message detection
+  
+  ```python main.py
+  TIEMPO_LIMITE = 4  # in 4 seconds
+  ```
+</ParamField>
+
+<ParamField path="LIMITE_REPETICIONES" type="int" default="3">
+  Number of identical messages before flagging as spam
+  
+  ```python main.py
+  LIMITE_REPETICIONES = 3  # 3 identical messages
+  ```
+</ParamField>
+
+## Custom Responses
+
+### User-Specific Spam Responses
+
+Customize responses when specific users are mentioned excessively:
+
+```python main.py
+respuestas_spam = {
+    708005339282276392: "¡Deja de mencionar a tu padre todo poderoso!!!",  # Zorcuz
+    751481025544061111: "El admin debe dormir, no estorbes"                # Oscar
+}
+```
+
+Add your own entries:
+
+```python
+respuestas_spam = {
+    YOUR_USER_ID: "Your custom message here",
+    ANOTHER_USER_ID: "Another custom message"
+}
+```
+
+### Generic Mention Response
+
+Customize the generic response for excessive mentions:
+
+```python main.py
+respuesta_generica_menciones = "oiga hijueputa de {mention}, deja de joder a {target}! Ya van {count} veces, haga algo con su vida."
+```
+
+Available placeholders:
+- `{mention}` - The user doing the mentioning
+- `{target}` - The user being mentioned
+- `{count}` - Number of times mentioned
+
+### Personal Command Responses
+
+Add custom persona commands with the `respuestas` dictionary:
+
+```python main.py
+respuestas = {
+    'personas': {
+        'dios': 'DiosGodCoperPedraza lo mejor del mundo, alabado seas',
+        'oscar': 'pendiente por poner',
+        'reno': 'me encanta la verga bien peluda y grande en mi culo',
+        # Add your own:
+        'yourname': 'Your custom response here'
+    }
+}
+```
+
+These automatically become commands: `$dios`, `$oscar`, `$yourname`, etc.
+
+## Periodic Messages
+
+Configure messages sent automatically every 12 hours:
+
+```python main.py
+mensajes_random = [
+    "Your message here",
+    "Another message",
+    "A third message",
+    # Add as many as you want
+]
+```
+
+<Note>
+The `obtener_mensaje_sin_repetir()` function ensures messages don't repeat until all have been sent once.
+</Note>
+
+### Changing Frequency
+
+Modify the periodic task interval (default: 12 hours):
+
+```python main.py
+@tasks.loop(hours=12)  # Change this value
+async def spam_periodico():
+    # ...
+```
+
+Examples:
+- `hours=6` - Every 6 hours (4 times per day)
+- `hours=24` - Once per day
+- `minutes=30` - Every 30 minutes
+- `seconds=60` - Every minute (not recommended)
+
+## AI Model Configuration
+
+Customize the Groq AI model settings in the `obtener_respuesta_gemini()` function:
+
+```python main.py
+response = groq_client.chat.completions.create(
+    model="llama-3.3-70b-versatile",  # Model to use
+    messages=[...],
+    temperature=0.7,    # Creativity (0.0-1.0)
+    max_tokens=256,     # Response length limit
+)
+```
+
+<ParamField path="temperature" type="float" default="0.7">
+  Controls randomness: 0.0 = deterministic, 1.0 = very creative
+</ParamField>
+
+<ParamField path="max_tokens" type="int" default="256">
+  Maximum length of AI responses in tokens (~4 characters per token)
+</ParamField>
+
+## Command Prefix
+
+Change the bot's command prefix (default: `$`):
+
+```python main.py
+bot = commands.Bot(command_prefix='$', intents=intents, help_command=None)
+```
+
+Change `'$'` to any character:
+- `'!'` - Exclamation mark
+- `'/'` - Slash
+- `'.'` - Period
+- `'chimbot '` - Word prefix
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Environment Setup" icon="gear" href="/configuration/environment">
+    Configure environment variables and API keys
+  </Card>
+  
+  <Card title="Permissions Guide" icon="shield-check" href="/configuration/permissions">
+    Set up required Discord permissions
+  </Card>
+</CardGroup>

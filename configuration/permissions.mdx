@@ -1,0 +1,291 @@
+---
+title: Discord permissions
+description: Required Discord permissions and intents for ChimBot
+---
+
+ChimBot requires specific Discord permissions and privileged intents to function properly. This page covers all required permissions and how to configure them.
+
+## Required Privileged Intents
+
+ChimBot uses Discord's Privileged Gateway Intents which must be enabled in the Developer Portal:
+
+```python main.py
+intents = discord.Intents.default()
+intents.message_content = True  # Required for reading message content
+intents.members = True           # Required for member join/leave events
+```
+
+### Enabling Privileged Intents
+
+<Steps>
+  <Step title="Go to Developer Portal">
+    Visit [discord.com/developers/applications](https://discord.com/developers/applications)
+  </Step>
+  
+  <Step title="Select Your Application">
+    Click on your bot application
+  </Step>
+  
+  <Step title="Navigate to Bot Settings">
+    Go to the "Bot" section in the left sidebar
+  </Step>
+  
+  <Step title="Enable Intents">
+    Scroll down to "Privileged Gateway Intents" and enable:
+    - **Message Content Intent** - Allows reading message content
+    - **Server Members Intent** - Allows tracking member join/leave events
+  </Step>
+</Steps>
+
+<Warning>
+Without these intents enabled, the bot will not be able to read messages or detect member events.
+</Warning>
+
+## Required Bot Permissions
+
+ChimBot needs the following permissions to operate correctly:
+
+### Core Permissions
+
+<ParamField path="View Channels" type="permission" required>
+  Read messages and see channel content
+  
+  **Code reference**: All message handlers (line 621)
+</ParamField>
+
+<ParamField path="Send Messages" type="permission" required>
+  Send responses and notifications
+  
+  **Code reference**: `message.channel.send()` (used throughout)
+</ParamField>
+
+<ParamField path="Read Message History" type="permission" required>
+  Access message history for context
+  
+  **Code reference**: Message processing (line 621-767)
+</ParamField>
+
+### Moderation Permissions
+
+<ParamField path="Manage Messages" type="permission" required>
+  Delete spam messages and use `$borrar` command
+  
+  **Code reference**: 
+  - `message.delete()` (line 642, 667)
+  - `channel.purge()` (line 544)
+  - `@borrar` command (line 527-556)
+</ParamField>
+
+<ParamField path="Moderate Members" type="permission" required>
+  Timeout users for spam violations
+  
+  **Code reference**:
+  - `silenciar_usuario()` function (line 197-208)
+  - `member.timeout()` (line 201)
+</ParamField>
+
+### Optional Permissions
+
+<ParamField path="Add Reactions" type="permission">
+  React to messages (currently not used but may be useful for future features)
+</ParamField>
+
+<ParamField path="Embed Links" type="permission">
+  Send rich embeds for welcome/farewell messages
+  
+  **Code reference**:
+  - `on_member_join()` (line 787-800)
+  - `on_member_remove()` (line 803-816)
+</ParamField>
+
+## Generating Invite Link
+
+To invite the bot with the correct permissions:
+
+<Steps>
+  <Step title="Go to OAuth2 Settings">
+    In Discord Developer Portal, navigate to OAuth2 → URL Generator
+  </Step>
+  
+  <Step title="Select Scopes">
+    Check the following scopes:
+    - `bot` - Adds the bot to servers
+    - `applications.commands` - Enables slash commands (future use)
+  </Step>
+  
+  <Step title="Select Permissions">
+    Check the following bot permissions:
+    - View Channels
+    - Send Messages
+    - Read Message History
+    - Manage Messages
+    - Moderate Members
+    - Embed Links
+    - Add Reactions
+  </Step>
+  
+  <Step title="Copy Invite URL">
+    Copy the generated URL at the bottom and use it to invite your bot
+  </Step>
+</Steps>
+
+## Permission Integer
+
+For manual configuration, the required permissions integer is:
+
+```
+Permission Integer: 1099511627776 + 1073741824 + 8192 + 8 + 16384 + 67584
+Combined: 1099512794624
+```
+
+## Checking Permissions
+
+ChimBot includes a built-in command to verify permissions:
+
+```
+$permisos
+```
+
+This command shows:
+- Server-wide permissions
+- Channel-specific permissions
+- Which required permissions are missing
+
+**Code reference**: `ver_permisos()` command (line 557-606)
+
+### Example Output
+
+```
+✅ View channel
+✅ Send messages
+✅ Read message history
+✅ Manage messages
+✅ Moderate members
+✅ Embed links
+❌ Administrator (not required)
+```
+
+## Permission-Based Features
+
+Different features require different permissions:
+
+<Accordion title="Spam Detection (Moderate Members + Manage Messages)">
+  The spam detection system needs:
+  - **Moderate Members** - To timeout spammers for 10 seconds
+  - **Manage Messages** - To delete spam messages
+  
+  Without these permissions, the bot will detect spam but cannot take action.
+</Accordion>
+
+<Accordion title="Message Deletion ($borrar command)">
+  The `$borrar` command requires:
+  - **Manage Messages** - To delete messages in bulk
+  
+  Only admins can use this command, but the bot must also have the permission.
+</Accordion>
+
+<Accordion title="Welcome/Farewell Messages (Send Messages + Embed Links)">
+  Member events require:
+  - **Send Messages** - To send welcome/farewell messages
+  - **Embed Links** - To send rich embedded messages
+  
+  The bot also needs **Server Members Intent** enabled in Developer Portal.
+</Accordion>
+
+<Accordion title="AI Responses (Send Messages + Read Message History)">
+  AI-powered responses require:
+  - **Read Message History** - To read user messages
+  - **Send Messages** - To send AI responses
+  
+  Also requires **Message Content Intent** enabled in Developer Portal.
+</Accordion>
+
+## Role Hierarchy
+
+For the timeout feature to work properly:
+
+<Warning>
+ChimBot's role must be higher than the roles of users it needs to moderate. Discord doesn't allow bots to timeout users with higher or equal role positions.
+</Warning>
+
+### Setting Role Position
+
+<Steps>
+  <Step title="Open Server Settings">
+    Right-click your server and select "Server Settings"
+  </Step>
+  
+  <Step title="Go to Roles">
+    Navigate to the "Roles" section
+  </Step>
+  
+  <Step title="Position Bot Role">
+    Drag ChimBot's role above the roles of users you want to moderate
+  </Step>
+</Steps>
+
+## Troubleshooting
+
+<Accordion title="Bot can't delete messages">
+  **Solutions**:
+  - Verify **Manage Messages** permission is enabled
+  - Check that bot role is positioned correctly
+  - Confirm permissions in specific channels (channel overrides can block permissions)
+  - Run `$permisos` to see exact permissions
+</Accordion>
+
+<Accordion title="Bot can't timeout users">
+  **Solutions**:
+  - Verify **Moderate Members** permission is enabled
+  - Ensure bot's role is higher than target user's highest role
+  - Check that the server allows timeouts (Server Settings → Moderation)
+  - Verify timeout duration is valid (10 seconds in ChimBot's case)
+</Accordion>
+
+<Accordion title="Bot doesn't see messages">
+  **Solutions**:
+  - Enable **Message Content Intent** in Discord Developer Portal
+  - Wait 5-10 minutes after enabling intents (Discord caches intent settings)
+  - Restart the bot after enabling intents
+  - Verify bot has **View Channels** permission
+</Accordion>
+
+<Accordion title="Member join/leave events not firing">
+  **Solutions**:
+  - Enable **Server Members Intent** in Discord Developer Portal
+  - Verify `intents.members = True` is set in code (line 15)
+  - Check that the welcome channel ID is correct
+  - Restart bot after enabling intent
+</Accordion>
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Principle of Least Privilege" icon="shield">
+    Only grant permissions the bot actually needs. Don't give Administrator permission unless absolutely necessary.
+  </Card>
+  
+  <Card title="Test in Development Server" icon="flask">
+    Test permission configurations in a test server before deploying to production.
+  </Card>
+  
+  <Card title="Document Requirements" icon="book">
+    Keep a list of required permissions for server admins who invite your bot.
+  </Card>
+  
+  <Card title="Handle Missing Permissions" icon="triangle-exclamation">
+    The bot includes error handling for missing permissions (see `discord.Forbidden` exceptions).
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Environment Setup" icon="key" href="/configuration/environment">
+    Configure API keys and tokens
+  </Card>
+  
+  <Card title="Customization" icon="sliders" href="/configuration/customization">
+    Customize bot behavior and personality
+  </Card>
+</CardGroup>

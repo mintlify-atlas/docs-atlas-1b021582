@@ -1,0 +1,335 @@
+---
+title: 'Admin Commands'
+description: 'Administrator-only commands for server management'
+---
+
+Admin commands require special permissions and are used for server moderation and spam system management.
+
+## Permission Requirements
+
+Admin commands use Discord.py permission decorators:
+
+<CodeGroup>
+```python Administrator Permission
+@commands.has_permissions(administrator=True)
+# Full admin access required
+```
+
+```python Manage Messages Permission
+@commands.has_permissions(manage_messages=True)
+# Specific permission for message management
+```
+</CodeGroup>
+
+<Info>
+**Zorcuz** (user ID: `708005339282276392`) is treated as an administrator for command execution purposes, even if lacking formal Discord permissions.
+</Info>
+
+---
+
+## Delete Messages Command
+
+Bulk delete messages from the current channel.
+
+```bash
+$borrar <cantidad>
+```
+
+<ParamField path="cantidad" type="integer" required>
+  Number of messages to delete (1-100)
+</ParamField>
+
+### Permission Required
+
+`manage_messages` - Source: `main.py:528`
+
+### Behavior
+
+<Steps>
+  <Step title="Validate Quantity">
+    Checks if quantity is between 1 and 100
+  </Step>
+  <Step title="Delete Command Message">
+    Removes the command message itself
+  </Step>
+  <Step title="Purge Messages">
+    Deletes the specified number of messages
+  </Step>
+  <Step title="Confirm Action">
+    Sends confirmation message that auto-deletes after 3 seconds
+  </Step>
+</Steps>
+
+### Examples
+
+<CodeGroup>
+```bash Delete 10 Messages
+$borrar 10
+# Response: "Se borraron **10** mensajes."
+```
+
+```bash Invalid - Zero Messages
+$borrar 0
+# Response: "digame como borro 0 mensajes. Estupido."
+```
+
+```bash Invalid - Too Many
+$borrar 150
+# Response: "No sea abusivo, solo puedo borrar 100 mensajes"
+```
+</CodeGroup>
+
+### Error Handling
+
+<Warning>
+**Missing Permissions:**
+```
+No tengo permisos para borrar mensajes.
+```
+The bot needs `manage_messages` permission in the channel.
+</Warning>
+
+<Warning>
+**HTTP Error:**
+```
+Error al borrar mensajes: {error_details}
+```
+Discord API errors are caught and displayed.
+</Warning>
+
+### Logging
+
+All deletions are logged to console:
+
+```python
+print(f"[MODERACIÓN] {ctx.author} borró {len(mensajes_borrados)} mensajes en #{ctx.channel.name}")
+```
+
+**Source:** `main.py:527-555`
+
+---
+
+## Activate Spam Command
+
+Enable the automated spam system to send periodic messages.
+
+```bash
+$activarspam
+```
+
+### Permission Required
+
+`administrator=True` - Source: `main.py:486`
+
+### Behavior
+
+1. Checks if spam messages are configured
+2. Verifies if spam is already active
+3. Starts the periodic spam task (runs every 12 hours)
+4. Confirms activation
+
+### Response Messages
+
+<ResponseExample>
+```text Success
+Spam automático **ACTIVADO**. Se enviará un mensaje cada 12 horas.
+```
+</ResponseExample>
+
+<ResponseExample>
+```text Already Active
+El spam automático ya está activo.
+```
+</ResponseExample>
+
+<ResponseExample>
+```text No Messages Configured
+**ERROR:** No hay mensajes configurados. Agrega mensajes primero.
+```
+</ResponseExample>
+
+### Technical Details
+
+The command starts a Discord.py task loop:
+
+```python
+if spam_periodico.is_running():
+    await ctx.send("El spam automático ya está activo.")
+else:
+    spam_periodico.start()
+    await ctx.send("Spam automático **ACTIVADO**...")
+```
+
+### Spam System Configuration
+
+- **Frequency:** Every 12 hours
+- **Target Channel:** ID `1004171793101230151`
+- **Message Source:** `mensajes_random` list
+- **Anti-Repeat:** Uses `obtener_mensaje_sin_repetir()` to cycle through all messages before repeating
+
+**Source:** `main.py:485-498`, Task: `main.py:408-418`
+
+---
+
+## Deactivate Spam Command
+
+Disable the automated spam system.
+
+```bash
+$desactivarspam
+```
+
+### Permission Required
+
+`administrator=True` - Source: `main.py:501`
+
+### Behavior
+
+1. Checks if spam task is running
+2. Cancels the periodic task
+3. Confirms deactivation
+
+### Response Messages
+
+<ResponseExample>
+```text Success
+Spam automático **DESACTIVADO**.
+```
+</ResponseExample>
+
+<ResponseExample>
+```text Already Inactive
+El spam automático ya está desactivado.
+```
+</ResponseExample>
+
+### Implementation
+
+```python
+if spam_periodico.is_running():
+    spam_periodico.cancel()
+    await ctx.send("Spam automático **DESACTIVADO**.")
+else:
+    await ctx.send("El spam automático ya está desactivado.")
+```
+
+### Logging
+
+Logs deactivation events:
+
+```python
+print(f"[ADMIN] Spam automático desactivado por {ctx.author}")
+```
+
+**Source:** `main.py:500-509`
+
+---
+
+## Admin Help Display
+
+When admins run `$help admin`, they see additional AI command options:
+
+```
+**COMANDOS DE ADMINISTRADOR:**
+
+`$borrar <cantidad>` - Borra mensajes del canal (1-100)
+`$activarspam` - Activa el spam automático
+`$desactivarspam` - Desactiva el spam automático
+`$permisos` - Ver permisos del bot en el servidor y canal
+
+**COMANDOS POR IA (etiqueta @chimbot):**
+`@chimbot borra X mensajes` - Borra X mensajes (requiere admin)
+`@chimbot activa/activa el spam` - Activa spam automático
+`@chimbot desactiva/detén el spam` - Desactiva spam automático
+`@chimbot status del spam` - Ver estado del spam
+`@chimbot envía un mensaje de prueba` - Test del spam
+```
+
+**Source:** `main.py:450-455`
+
+---
+
+## Permission Validation
+
+The bot validates permissions before executing admin commands:
+
+### Traditional Commands
+
+Uses decorators that automatically check permissions:
+
+```python
+@bot.command(name='borrar')
+@commands.has_permissions(manage_messages=True)
+async def borrar_mensajes(ctx, cantidad: int):
+    # Command implementation
+```
+
+### AI-Interpreted Commands
+
+Manual permission checking in the execution handler:
+
+```python
+es_admin = message.author.guild_permissions.administrator
+es_zorcuz = user_id == ZORCUZ_ID
+
+# Zorcuz is considered admin
+puede_ejecutar_admin = es_admin or es_zorcuz
+
+if not puede_ejecutar_admin:
+    await message.channel.send("No tienes permisos para usar comandos de administrador.")
+    return True
+```
+
+**Source:** `main.py:304-319` (AI commands), `main.py:528` (traditional commands)
+
+---
+
+## Error Messages
+
+When non-admins attempt to use admin commands:
+
+<ResponseExample>
+```text Permission Denied
+No tienes permisos para usar este comando.
+```
+</ResponseExample>
+
+This error is handled by the global error handler:
+
+```python
+@bot.event
+async def on_command_error(ctx, error):
+    if isinstance(error, commands.MissingPermissions):
+        await ctx.send("No tienes permisos para usar este comando.")
+```
+
+**Source:** `main.py:819-826`
+
+---
+
+## Best Practices
+
+<Tip>
+**Test Before Activating:** Always use `$testspam` before running `$activarspam` to ensure messages are configured correctly.
+</Tip>
+
+<Tip>
+**Check Permissions:** Run `$permisos` to verify the bot has necessary permissions before using admin commands.
+</Tip>
+
+<Warning>
+**Message Deletion is Permanent:** The `$borrar` command permanently deletes messages. Use with caution.
+</Warning>
+
+---
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="AI Commands" icon="brain" href="/commands/ai-commands">
+    Learn about natural language admin commands
+  </Card>
+  <Card title="Spam System" icon="robot" href="/features/spam-detection">
+    Understand the automated spam system
+  </Card>
+</CardGroup>

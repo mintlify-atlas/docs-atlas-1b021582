@@ -1,0 +1,138 @@
+---
+title: 'Command System Overview'
+description: 'Understanding ChimBot command structure and execution'
+---
+
+ChimBot uses a dual command system that combines traditional prefix-based commands with AI-interpreted natural language commands.
+
+## Command Prefix
+
+All traditional commands use the `$` prefix:
+
+```
+$help
+$testspam
+$statusspam
+```
+
+## Command Categories
+
+Commands are organized into three main categories:
+
+<CardGroup cols={3}>
+  <Card title="User Commands" icon="user" href="/commands/user-commands">
+    Basic commands available to all server members
+  </Card>
+  <Card title="Admin Commands" icon="shield" href="/commands/admin-commands">
+    Server management commands requiring administrator permissions
+  </Card>
+  <Card title="AI Commands" icon="brain" href="/commands/ai-commands">
+    Natural language commands interpreted by AI
+  </Card>
+</CardGroup>
+
+## Permission System
+
+ChimBot implements a robust permission system:
+
+### Permission Decorators
+
+Commands use Discord.py decorators to enforce permissions:
+
+```python
+@commands.has_permissions(administrator=True)  # Requires admin
+@commands.has_permissions(manage_messages=True)  # Requires message management
+```
+
+### Special Users
+
+- **Zorcuz** (ID: `708005339282276392`) - Bot creator with special privileges
+- **Administrators** - Users with server administrator permissions
+- **Regular Users** - All other server members
+
+### Permission Hierarchy
+
+1. **Zorcuz** - Full access to all commands (treated as admin for command execution)
+2. **Administrators** - Access to all admin commands
+3. **Regular Users** - Access to user-level commands only
+
+## Command Execution Flow
+
+<Steps>
+  <Step title="Message Received">
+    Bot receives a message in a Discord channel
+  </Step>
+  <Step title="Bot Mention Check">
+    If bot is mentioned with `@chimbot`, attempts AI command interpretation
+  </Step>
+  <Step title="Command Parsing">
+    If starts with `$`, parses as traditional command
+  </Step>
+  <Step title="Permission Validation">
+    Checks if user has required permissions
+  </Step>
+  <Step title="Command Execution">
+    Executes command and returns response
+  </Step>
+</Steps>
+
+## Error Handling
+
+The bot provides clear error messages:
+
+- **Command not found** - "Comando no encontrado. Usa `$help` para ver los comandos disponibles."
+- **Missing permissions** - "No tienes permisos para usar este comando."
+- **Invalid parameters** - Command-specific error messages
+
+Source: `main.py:819-826`
+
+## Help System
+
+The help command has multiple subcategories:
+
+<CodeGroup>
+```bash Basic Help
+$help
+# Shows available help categories
+```
+
+```bash User Commands
+$help user
+# Lists all user-level commands
+```
+
+```bash Admin Commands
+$help admin
+# Lists admin commands (if you have permissions)
+```
+
+```bash Personas Commands
+$help personas
+# Lists custom persona commands
+```
+</CodeGroup>
+
+## Dynamic Command Generation
+
+ChimBot dynamically generates commands from configuration:
+
+```python
+# Persona commands are auto-registered from the respuestas dictionary
+for nombre in respuestas['personas'].keys():
+    bot.command(name=nombre)(crear_comando_persona(nombre))
+```
+
+Source: `main.py:614-616`
+
+This allows easy addition of new commands without manual registration.
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="User Commands" icon="terminal" href="/commands/user-commands">
+    Learn about commands available to all users
+  </Card>
+  <Card title="Admin Commands" icon="lock" href="/commands/admin-commands">
+    Explore administrative commands
+  </Card>
+</CardGroup>

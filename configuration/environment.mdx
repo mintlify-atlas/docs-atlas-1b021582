@@ -1,0 +1,162 @@
+---
+title: Environment variables
+description: Configure ChimBot with environment variables and API keys
+---
+
+ChimBot requires several environment variables to function properly. This page covers all required and optional configuration variables.
+
+## Required Variables
+
+<ParamField path="TOKEN" type="string" required>
+  Your Discord bot token from the [Discord Developer Portal](https://discord.com/developers/applications)
+  
+  <Note>Never share your bot token publicly or commit it to version control</Note>
+</ParamField>
+
+<ParamField path="GROQ_API_KEY" type="string" required>
+  Your Groq API key for AI-powered responses using LLaMA 3.3 70B
+  
+  Get your API key from [Groq Console](https://console.groq.com)
+</ParamField>
+
+## Setup
+
+Create a `.env` file in the root directory of your bot:
+
+```bash .env
+TOKEN=your_discord_bot_token_here
+GROQ_API_KEY=your_groq_api_key_here
+```
+
+<Warning>
+The `.env` file is already included in `.gitignore` to prevent accidental commits. Keep your tokens secure.
+</Warning>
+
+## Loading Environment Variables
+
+ChimBot uses `python-dotenv` to load environment variables automatically at startup:
+
+```python main.py
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+
+# Access environment variables
+GROQ_API_KEY = os.getenv('GROQ_API_KEY')
+```
+
+The bot loads these variables when `main.py` starts running (line 11).
+
+## Getting Your Discord Token
+
+<Steps>
+  <Step title="Go to Discord Developer Portal">
+    Visit [discord.com/developers/applications](https://discord.com/developers/applications) and create a new application
+  </Step>
+  
+  <Step title="Create a Bot">
+    Navigate to the "Bot" section and click "Add Bot"
+  </Step>
+  
+  <Step title="Copy Token">
+    Under the token section, click "Reset Token" and copy the generated token
+    
+    <Warning>This token will only be shown once. Save it securely.</Warning>
+  </Step>
+  
+  <Step title="Enable Privileged Intents">
+    Enable the following intents:
+    - Message Content Intent
+    - Server Members Intent
+  </Step>
+</Steps>
+
+## Getting Your Groq API Key
+
+<Steps>
+  <Step title="Create Groq Account">
+    Sign up at [console.groq.com](https://console.groq.com)
+  </Step>
+  
+  <Step title="Generate API Key">
+    Navigate to API Keys section and create a new key
+  </Step>
+  
+  <Step title="Copy Key">
+    Copy the generated API key and add it to your `.env` file
+  </Step>
+</Steps>
+
+## Validation
+
+To verify your environment variables are loaded correctly:
+
+```python
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+if not os.getenv('TOKEN'):
+    print("ERROR: Discord TOKEN not found")
+    
+if not os.getenv('GROQ_API_KEY'):
+    print("ERROR: GROQ_API_KEY not found")
+    
+print("Environment variables loaded successfully")
+```
+
+## Security Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Use .env files" icon="file-lock">
+    Store all sensitive credentials in `.env` files, never in source code
+  </Card>
+  
+  <Card title="Add to .gitignore" icon="ban">
+    Ensure `.env` is in your `.gitignore` file to prevent commits
+  </Card>
+  
+  <Card title="Rotate keys regularly" icon="arrows-rotate">
+    Periodically regenerate your API keys and tokens
+  </Card>
+  
+  <Card title="Limit permissions" icon="shield-halved">
+    Only grant the minimum required Discord permissions
+  </Card>
+</CardGroup>
+
+## Troubleshooting
+
+<Accordion title="Error: TOKEN not found">
+  - Verify `.env` file exists in the same directory as `main.py`
+  - Check that `python-dotenv` is installed: `pip install python-dotenv`
+  - Ensure there are no spaces around the `=` in your `.env` file
+  - Verify the variable name is exactly `TOKEN` (case-sensitive)
+</Accordion>
+
+<Accordion title="Error: GROQ_API_KEY not found">
+  - Confirm your Groq API key is valid and active
+  - Check the variable name matches exactly: `GROQ_API_KEY`
+  - Verify you've copied the entire key without truncation
+</Accordion>
+
+<Accordion title="Bot doesn't respond">
+  - Verify both environment variables are set correctly
+  - Check the bot has proper Discord permissions
+  - Ensure privileged intents are enabled in Discord Developer Portal
+  - Review the console for error messages
+</Accordion>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Customize Bot Behavior" icon="sliders" href="/configuration/customization">
+    Configure personality, spam detection, and more
+  </Card>
+  
+  <Card title="Set Permissions" icon="key" href="/configuration/permissions">
+    Learn about required Discord permissions
+  </Card>
+</CardGroup>

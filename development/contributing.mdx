@@ -1,0 +1,425 @@
+---
+title: Contributing
+description: How to contribute to ChimBot development
+---
+
+Thank you for your interest in contributing to ChimBot! This guide will help you get started with contributing code, features, and improvements.
+
+## Getting Started
+
+<Steps>
+  <Step title="Fork the Repository">
+    Fork [duvanleandro/Chimbot](https://github.com/duvanleandro/Chimbot) on GitHub
+  </Step>
+  
+  <Step title="Clone Your Fork">
+    ```bash
+    git clone https://github.com/YOUR_USERNAME/Chimbot.git
+    cd Chimbot
+    ```
+  </Step>
+  
+  <Step title="Set Up Development Environment">
+    ```bash
+    # Create virtual environment
+    python -m venv venv
+    source venv/bin/activate  # On Windows: venv\Scripts\activate
+    
+    # Install dependencies
+    pip install discord.py groq python-dotenv
+    
+    # Create .env file
+    cp .env.example .env  # Or create manually
+    ```
+  </Step>
+  
+  <Step title="Configure Environment">
+    Add your tokens to `.env`:
+    ```bash
+    TOKEN=your_test_bot_token
+    GROQ_API_KEY=your_groq_api_key
+    ```
+  </Step>
+</Steps>
+
+## Development Workflow
+
+### 1. Create a Branch
+
+```bash
+git checkout -b feature/your-feature-name
+```
+
+Use descriptive branch names:
+- `feature/add-music-commands` - New features
+- `fix/spam-detection-bug` - Bug fixes
+- `docs/update-readme` - Documentation updates
+- `refactor/cleanup-commands` - Code refactoring
+
+### 2. Make Your Changes
+
+Edit `main.py` to implement your changes. Follow the existing code structure:
+
+```python main.py
+# Keep sections organized:
+# 1. Configuration (lines 1-99)
+# 2. Detection Functions (lines 100-208)
+# 3. AI Integration (lines 209-267)
+# 4. Command Interpretation (lines 268-404)
+# 5. Periodic Tasks (lines 406-425)
+# 6. Commands (lines 427-616)
+# 7. Event Handlers (lines 618-826)
+```
+
+### 3. Test Your Changes
+
+<Tabs>
+  <Tab title="Manual Testing">
+    Run the bot in a test Discord server:
+    
+    ```bash
+    python main.py
+    ```
+    
+    Test all affected functionality:
+    - Commands work as expected
+    - Error handling works properly
+    - No unexpected crashes or errors
+    - Permissions are respected
+  </Tab>
+  
+  <Tab title="Code Review">
+    Review your changes:
+    
+    - [ ] Code follows existing style
+    - [ ] No hardcoded tokens or secrets
+    - [ ] Error handling is present
+    - [ ] Comments explain complex logic
+    - [ ] No breaking changes (unless intentional)
+  </Tab>
+</Tabs>
+
+### 4. Commit Your Changes
+
+Follow conventional commit format:
+
+```bash
+# Feature
+git commit -m "feat: add music playback commands"
+
+# Bug fix
+git commit -m "fix: prevent spam detection false positives"
+
+# Documentation
+git commit -m "docs: update installation instructions"
+
+# Refactor
+git commit -m "refactor: simplify AI response processing"
+```
+
+### 5. Push and Create Pull Request
+
+```bash
+git push origin feature/your-feature-name
+```
+
+Then create a Pull Request on GitHub with:
+- Clear description of changes
+- Reasoning for the change
+- Testing steps performed
+- Any breaking changes
+
+## Code Style Guidelines
+
+### Python Style
+
+Follow PEP 8 with these conventions:
+
+```python
+# Use descriptive function names
+async def detectar_spam_rapido(user_id, timestamp):
+    """Detects rapid message spam using sliding window algorithm"""
+    pass
+
+# Use type hints where helpful
+async def obtener_respuesta_gemini(
+    prompt: str, 
+    contexto: str = "", 
+    user_id: int = None
+) -> str:
+    pass
+
+# Keep functions focused and single-purpose
+def es_spam(mensajes: list, limite: int) -> bool:
+    return len(mensajes) >= limite
+```
+
+### Discord.py Conventions
+
+```python
+# Use async/await consistently
+async def on_message(message):
+    if message.author == bot.user:
+        return
+    
+    # Use async with for typing indicator
+    async with message.channel.typing():
+        response = await process_message(message.content)
+        await message.channel.send(response)
+
+# Handle errors gracefully
+try:
+    await message.delete()
+except discord.Forbidden:
+    await message.channel.send("I don't have permission to delete messages")
+```
+
+### Configuration Constants
+
+```python
+# Use UPPER_CASE for constants
+LIMITE_MENSAJES = 4
+TIEMPO_LIMITE = 4
+CANAL_SPAM_ID = 1004171793101230151
+
+# Group related constants
+# ==================== SPAM DETECTION ====================
+LIMITE_MENSAJES = 4
+TIEMPO_LIMITE = 4
+LIMITE_REPETICIONES = 3
+```
+
+## Adding New Features
+
+### Adding a New Command
+
+<Steps>
+  <Step title="Define the Command Function">
+    ```python main.py
+    @bot.command(name='yourcommand')
+    async def your_command(ctx, arg1: str, arg2: int = 10):
+        """Description of what the command does"""
+        # Validation
+        if not arg1:
+            await ctx.send("Please provide arg1")
+            return
+        
+        # Logic
+        result = process_something(arg1, arg2)
+        
+        # Response
+        await ctx.send(f"Result: {result}")
+    ```
+  </Step>
+  
+  <Step title="Add Permission Checks (if needed)">
+    ```python
+    @bot.command(name='admincommand')
+    @commands.has_permissions(administrator=True)
+    async def admin_command(ctx):
+        """Admin-only command"""
+        await ctx.send("Admin action performed")
+    ```
+  </Step>
+  
+  <Step title="Update Help System">
+    Add to `respuestas` dictionary:
+    
+    ```python
+    respuestas = {
+        'general': {
+            'usuario': [
+                '`$yourcommand <arg>` - Description of command',
+                # ...
+            ]
+        }
+    }
+    ```
+  </Step>
+  
+  <Step title="Document the Command">
+    Add documentation to the appropriate docs page
+  </Step>
+</Steps>
+
+### Adding a New Event Handler
+
+```python main.py
+@bot.event
+async def on_message_edit(before, after):
+    """Triggered when a message is edited"""
+    if before.content == after.content:
+        return  # No actual change
+    
+    # Log the edit
+    print(f"Message edited by {after.author}: {before.content} -> {after.content}")
+    
+    # Optional: Take action
+    if contains_spam(after.content):
+        await after.delete()
+```
+
+### Adding AI Functionality
+
+```python main.py
+async def nueva_funcion_ia(prompt: str) -> str:
+    """New AI-powered function"""
+    try:
+        response = groq_client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[
+                {"role": "system", "content": "Your system prompt"},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.7,
+            max_tokens=256,
+        )
+        return response.choices[0].message.content
+    except Exception as e:
+        print(f"[ERROR] {e}")
+        return None
+```
+
+## Common Contributions
+
+<CardGroup cols={2}>
+  <Card title="Bug Fixes" icon="bug">
+    Found a bug? Check existing issues, create a new one if needed, then submit a fix.
+  </Card>
+  
+  <Card title="New Commands" icon="terminal">
+    Add useful commands that enhance bot functionality. Follow the command structure.
+  </Card>
+  
+  <Card title="Documentation" icon="book">
+    Improve code comments, update README, or enhance these docs.
+  </Card>
+  
+  <Card title="Refactoring" icon="code">
+    Improve code quality, performance, or organization without changing functionality.
+  </Card>
+</CardGroup>
+
+## Testing Checklist
+
+Before submitting your PR, verify:
+
+- [ ] Bot starts without errors
+- [ ] New features work as expected
+- [ ] Existing features still work (no regressions)
+- [ ] Error cases are handled gracefully
+- [ ] No hardcoded secrets or tokens
+- [ ] Code follows existing style
+- [ ] Comments explain complex logic
+- [ ] Required permissions are documented
+- [ ] Help text is updated if adding commands
+
+## Pull Request Template
+
+When creating a PR, include:
+
+```markdown
+## Description
+Brief description of changes
+
+## Motivation
+Why is this change needed?
+
+## Changes Made
+- List of specific changes
+- New features or fixes
+
+## Testing
+Steps to test the changes:
+1. Step one
+2. Step two
+
+## Screenshots (if applicable)
+Add screenshots of new features
+
+## Breaking Changes
+List any breaking changes
+
+## Checklist
+- [ ] Code follows project style
+- [ ] Tests pass
+- [ ] Documentation updated
+- [ ] No secrets in code
+```
+
+## Best Practices
+
+### Error Handling
+
+Always include error handling:
+
+```python
+try:
+    # Operation that might fail
+    await message.delete()
+except discord.Forbidden:
+    # Handle permission error
+    print("Missing permissions")
+except discord.HTTPException as e:
+    # Handle API error
+    print(f"Discord API error: {e}")
+except Exception as e:
+    # Catch-all
+    print(f"Unexpected error: {e}")
+```
+
+### Logging
+
+Use print statements for important events:
+
+```python
+print(f"[COMMAND] {ctx.author} used ${ctx.command}")
+print(f"[ERROR] Failed to process: {error}")
+print(f"[AI] Response generated: {response[:50]}...")
+```
+
+### Resource Cleanup
+
+Clean up resources properly:
+
+```python
+# Delete temporary messages
+confirmacion = await ctx.send("Action completed")
+await confirmacion.delete(delay=5)
+
+# Clear old data from state dictionaries
+if tiempo_actual - data['last_reset'] > 60:
+    data['count'] = 0
+    data['last_reset'] = tiempo_actual
+```
+
+## Getting Help
+
+<CardGroup cols={2}>
+  <Card title="GitHub Issues" icon="github" href="https://github.com/duvanleandro/Chimbot/issues">
+    Report bugs or request features
+  </Card>
+  
+  <Card title="Discord.py Docs" icon="book" href="https://discordpy.readthedocs.io/">
+    Official discord.py documentation
+  </Card>
+  
+  <Card title="Groq Documentation" icon="brain" href="https://console.groq.com/docs">
+    Groq AI API documentation
+  </Card>
+  
+  <Card title="Architecture Guide" icon="diagram-project" href="/development/architecture">
+    Understanding ChimBot's structure
+  </Card>
+</CardGroup>
+
+## Code of Conduct
+
+- Be respectful and constructive in discussions
+- Follow Discord's Terms of Service
+- Don't include malicious code
+- Respect existing code style and patterns
+- Test your changes thoroughly before submitting
+- Document breaking changes clearly
+
+Thank you for contributing to ChimBot!

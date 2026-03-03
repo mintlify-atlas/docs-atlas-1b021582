@@ -1,0 +1,320 @@
+---
+title: 'Member Events'
+description: 'Welcome and farewell messages for server members'
+icon: 'door-open'
+---
+
+## Overview
+
+ChimBot automatically sends customized embed messages when members join or leave your Discord server. These events create a welcoming atmosphere and keep track of member activity.
+
+<CardGroup cols={2}>
+  <Card title="Welcome Messages" icon="hand-wave" color="#00d26a">
+    Greet new members with a custom embed when they join
+  </Card>
+  <Card title="Farewell Messages" icon="door-closed" color="#ff4757">
+    Send a message when members leave the server
+  </Card>
+</CardGroup>
+
+## Configuration
+
+Set the channel where welcome/farewell messages will be sent:
+
+```python main.py
+# ID of the welcome/farewell channel
+CANAL_BIENVENIDA_ID = 1004156875035656303
+```
+
+<Note>
+To get a channel ID in Discord: Enable Developer Mode (User Settings → Advanced → Developer Mode), then right-click the channel and select "Copy ID".
+</Note>
+
+## Welcome Event
+
+The `on_member_join()` event triggers when a new member joins:
+
+```python main.py
+@bot.event
+async def on_member_join(member):
+    """Se ejecuta cuando un usuario entra al servidor"""
+    canal = bot.get_channel(CANAL_BIENVENIDA_ID)
+    if canal:
+        embed = discord.Embed(
+            title="¡Bienvenido al servidor!",
+            description=f"Hola {member.mention}, disfruta tu nueva casa.",
+            color=discord.Color.green()
+        )
+        embed.set_thumbnail(url=member.avatar.url)
+        embed.add_field(name="Nombre", value=member.name, inline=True)
+        embed.add_field(name="Miembros totales", value=str(member.guild.member_count), inline=True)
+        await canal.send(embed=embed)
+        print(f"[EVENTO] {member.name} se unió al servidor")
+```
+
+### Welcome Message Features
+
+<Accordion title="Embed Components">
+  The welcome embed includes:
+  
+  - **Title**: "¡Bienvenido al servidor!"
+  - **Description**: Personalized greeting with user mention
+  - **Color**: Green (`discord.Color.green()`)
+  - **Thumbnail**: Member's avatar image
+  - **Fields**:
+    - Member's username
+    - Total server member count
+</Accordion>
+
+### Example Output
+
+<Frame>
+  <img src="/images/welcome-embed-example.png" alt="Welcome embed example" />
+</Frame>
+
+```
+┌─────────────────────────────────────┐
+│ ¡Bienvenido al servidor!            │
+├─────────────────────────────────────┤
+│ Hola @NewUser, disfruta tu nueva    │
+│ casa.                               │
+│                                     │
+│ [Avatar]                            │
+│                                     │
+│ Nombre: NewUser                     │
+│ Miembros totales: 42                │
+└─────────────────────────────────────┘
+```
+
+## Farewell Event
+
+The `on_member_remove()` event triggers when a member leaves:
+
+```python main.py
+@bot.event
+async def on_member_remove(member):
+    """Se ejecuta cuando un usuario sale del servidor"""
+    canal = bot.get_channel(CANAL_BIENVENIDA_ID)
+    if canal:
+        embed = discord.Embed(
+            title="Un miembro se fue",
+            description=f"{member.mention} ha abandonado el servidor. Igual nadie lo queria",
+            color=discord.Color.red()
+        )
+        embed.set_thumbnail(url=member.avatar.url)
+        embed.add_field(name="Usuario", value=member.name, inline=True)
+        embed.add_field(name="Miembros totales", value=str(member.guild.member_count), inline=True)
+        await canal.send(embed=embed)
+        print(f"[EVENTO] {member.name} abandonó el servidor")
+```
+
+### Farewell Message Features
+
+<Accordion title="Embed Components">
+  The farewell embed includes:
+  
+  - **Title**: "Un miembro se fue"
+  - **Description**: Farewell message with user mention
+  - **Color**: Red (`discord.Color.red()`)
+  - **Thumbnail**: Member's avatar image
+  - **Fields**:
+    - Member's username
+    - Updated total server member count
+</Accordion>
+
+### Example Output
+
+```
+┌─────────────────────────────────────┐
+│ Un miembro se fue                   │
+├─────────────────────────────────────┤
+│ @OldUser ha abandonado el servidor. │
+│ Igual nadie lo queria               │
+│                                     │
+│ [Avatar]                            │
+│                                     │
+│ Usuario: OldUser                    │
+│ Miembros totales: 41                │
+└─────────────────────────────────────┘
+```
+
+## Required Setup
+
+<Steps>
+  <Step title="Enable Member Intents">
+    Member events require the Members Intent to be enabled:
+
+    ```python main.py
+    intents = discord.Intents.default()
+    intents.members = True  # Enable member events (join/leave)
+    ```
+  </Step>
+  
+  <Step title="Enable in Discord Developer Portal">
+    Go to your bot's settings in the [Discord Developer Portal](https://discord.com/developers/applications):
+    
+    1. Select your application
+    2. Go to "Bot" settings
+    3. Scroll to "Privileged Gateway Intents"
+    4. Enable **Server Members Intent**
+    5. Save changes
+  </Step>
+  
+  <Step title="Configure Channel">
+    Set the `CANAL_BIENVENIDA_ID` to your desired welcome channel:
+
+    ```python
+    CANAL_BIENVENIDA_ID = 1234567890123456789  # Your channel ID
+    ```
+  </Step>
+</Steps>
+
+<Warning>
+Without the **Server Members Intent** enabled in both the code AND the Developer Portal, these events will not fire. The bot will appear to ignore join/leave events.
+</Warning>
+
+## Customization Examples
+
+<Tabs>
+  <Tab title="Custom Welcome Message">
+    ```python
+    @bot.event
+    async def on_member_join(member):
+        canal = bot.get_channel(CANAL_BIENVENIDA_ID)
+        if canal:
+            embed = discord.Embed(
+                title="🎉 New Member Alert!",
+                description=f"Welcome {member.mention} to our awesome community!",
+                color=0x00d26a  # Custom hex color
+            )
+            embed.set_thumbnail(url=member.avatar.url)
+            embed.add_field(name="👤 Username", value=member.name, inline=True)
+            embed.add_field(name="📅 Joined", value=member.joined_at.strftime("%Y-%m-%d"), inline=True)
+            embed.add_field(name="👥 Member #", value=str(member.guild.member_count), inline=True)
+            embed.set_footer(text="Make sure to read the rules!")
+            await canal.send(embed=embed)
+    ```
+  </Tab>
+
+  <Tab title="Custom Farewell Message">
+    ```python
+    @bot.event
+    async def on_member_remove(member):
+        canal = bot.get_channel(CANAL_BIENVENIDA_ID)
+        if canal:
+            embed = discord.Embed(
+                title="👋 Goodbye!",
+                description=f"{member.name} has left the server.",
+                color=0xff6b6b  # Custom hex color
+            )
+            embed.set_thumbnail(url=member.avatar.url)
+            embed.add_field(name="Member Count", value=str(member.guild.member_count), inline=False)
+            embed.set_footer(text="We hope to see you again!")
+            await canal.send(embed=embed)
+    ```
+  </Tab>
+
+  <Tab title="Role Assignment">
+    Automatically assign a role to new members:
+
+    ```python
+    @bot.event
+    async def on_member_join(member):
+        # Assign default role
+        default_role = discord.utils.get(member.guild.roles, name="Member")
+        if default_role:
+            await member.add_roles(default_role)
+        
+        # Send welcome message
+        canal = bot.get_channel(CANAL_BIENVENIDA_ID)
+        if canal:
+            embed = discord.Embed(
+                title="Welcome!",
+                description=f"{member.mention} has been given the {default_role.mention} role!",
+                color=discord.Color.green()
+            )
+            await canal.send(embed=embed)
+    ```
+  </Tab>
+
+  <Tab title="DM New Members">
+    Send a direct message to new members:
+
+    ```python
+    @bot.event
+    async def on_member_join(member):
+        # Send DM to new member
+        try:
+            await member.send(
+                f"Welcome to {member.guild.name}! "
+                "Please read the rules in #rules channel."
+            )
+        except discord.Forbidden:
+            print(f"Couldn't DM {member.name} (DMs disabled)")
+        
+        # Send server announcement
+        canal = bot.get_channel(CANAL_BIENVENIDA_ID)
+        if canal:
+            await canal.send(f"Welcome {member.mention}!")
+    ```
+  </Tab>
+</Tabs>
+
+## Embed Colors
+
+ChimBot uses color coding for different events:
+
+| Event | Color | Value |
+|-------|-------|-------|
+| Member Join | 🟢 Green | `discord.Color.green()` |
+| Member Leave | 🔴 Red | `discord.Color.red()` |
+
+You can customize with:
+- `discord.Color.blue()`
+- `discord.Color.gold()`
+- `discord.Color.purple()`
+- `0xHEXCODE` (e.g., `0x00d26a`)
+
+## Error Handling
+
+The events include basic error handling:
+
+```python
+if canal:
+    # Only send if channel exists
+    await canal.send(embed=embed)
+else:
+    # Channel not found - log error
+    print(f"[ERROR] Welcome channel {CANAL_BIENVENIDA_ID} not found")
+```
+
+<Note>
+If the channel doesn't exist or the bot lacks permissions, the event will fail silently. Check console logs for event confirmations.
+</Note>
+
+## Required Permissions
+
+<Card title="Bot Permissions" icon="key">
+  - **View Channel** - Access the welcome channel
+  - **Send Messages** - Post welcome/farewell messages
+  - **Embed Links** - Create rich embed messages
+  - **Attach Files** - Display member avatars
+</Card>
+
+## Console Logging
+
+All member events are logged to the console for monitoring:
+
+```bash
+[EVENTO] NewUser se unió al servidor
+[EVENTO] OldUser abandonó el servidor
+```
+
+## Best Practices
+
+<Check>**Do**: Test events by joining/leaving with an alt account</Check>
+<Check>**Do**: Use a dedicated welcome channel to avoid spam in general chat</Check>
+<Check>**Do**: Keep welcome messages friendly and informative</Check>
+<Check>**Do**: Include links to rules or important channels</Check>
+<Check>**Don't**: Make farewell messages too negative or hostile</Check>
+<Check>**Don't**: Ping @everyone in welcome messages</Check>

@@ -1,0 +1,478 @@
+---
+title: Installation
+description: Complete installation and configuration guide for ChimBot
+---
+
+## Prerequisites
+
+Before installing ChimBot, ensure you have the following:
+
+<CardGroup cols={2}>
+  <Card title="Python 3.8+" icon="python">
+    ChimBot requires Python 3.8 or higher for async/await support
+  </Card>
+  <Card title="Discord Bot Token" icon="discord">
+    Create a bot application in the Discord Developer Portal
+  </Card>
+  <Card title="Groq API Key" icon="key">
+    Sign up for free API access at Groq Console
+  </Card>
+  <Card title="Discord Server" icon="server">
+    A Discord server where you have admin permissions
+  </Card>
+</CardGroup>
+
+## Installation Methods
+
+<Tabs>
+  <Tab title="Standard Installation">
+    ### 1. Download the Source Code
+    
+    Clone the repository or download the source code:
+    
+    ```bash
+    git clone https://github.com/yourusername/chimbot.git
+    cd chimbot
+    ```
+    
+    ### 2. Create a Virtual Environment (Recommended)
+    
+    Create and activate a virtual environment to isolate dependencies:
+    
+    <CodeGroup>
+    ```bash Linux/macOS
+    python3 -m venv venv
+    source venv/bin/activate
+    ```
+    
+    ```bash Windows
+    python -m venv venv
+    venv\Scripts\activate
+    ```
+    </CodeGroup>
+    
+    ### 3. Install Required Packages
+    
+    Install all dependencies:
+    
+    ```bash
+    pip install discord.py python-dotenv groq
+    ```
+    
+    <Accordion title="Package Details">
+      - **discord.py** - Discord API wrapper for Python
+      - **python-dotenv** - Load environment variables from .env file
+      - **groq** - Official Groq API client for AI inference
+    </Accordion>
+  </Tab>
+  
+  <Tab title="Using requirements.txt">
+    ### 1. Clone Repository
+    
+    ```bash
+    git clone https://github.com/yourusername/chimbot.git
+    cd chimbot
+    ```
+    
+    ### 2. Create requirements.txt
+    
+    Create a `requirements.txt` file with the following content:
+    
+    ```text
+    discord.py>=2.0.0
+    python-dotenv>=0.19.0
+    groq>=0.4.0
+    ```
+    
+    ### 3. Install from requirements.txt
+    
+    ```bash
+    pip install -r requirements.txt
+    ```
+  </Tab>
+</Tabs>
+
+## Discord Bot Setup
+
+<Steps>
+  <Step title="Create Discord Application">
+    1. Go to [Discord Developer Portal](https://discord.com/developers/applications)
+    2. Click **New Application**
+    3. Give your bot a name (e.g., "ChimBot")
+    4. Click **Create**
+  </Step>
+  
+  <Step title="Create Bot User">
+    1. Navigate to the **Bot** section in the left sidebar
+    2. Click **Add Bot** and confirm
+    3. Under **Privileged Gateway Intents**, enable:
+       - **Presence Intent**
+       - **Server Members Intent**
+       - **Message Content Intent** (required)
+    
+    <Warning>
+      The Message Content Intent is required for ChimBot to read message content. Without it, the bot won't function properly.
+    </Warning>
+  </Step>
+  
+  <Step title="Get Bot Token">
+    1. In the **Bot** section, click **Reset Token**
+    2. Copy the token (you'll need this for the `.env` file)
+    
+    <Warning>
+      Never share your bot token! Anyone with this token can control your bot.
+    </Warning>
+  </Step>
+  
+  <Step title="Invite Bot to Server">
+    1. Go to **OAuth2** > **URL Generator**
+    2. Select scopes: **bot** and **applications.commands**
+    3. Select bot permissions:
+       - Read Messages/View Channels
+       - Send Messages
+       - Manage Messages
+       - Read Message History
+       - Add Reactions
+       - Moderate Members (for timeout feature)
+    4. Copy the generated URL and open it in your browser
+    5. Select your server and authorize
+  </Step>
+</Steps>
+
+## Configuration
+
+### Environment Variables
+
+Create a `.env` file in the project root directory:
+
+```bash
+TOKEN=your_discord_bot_token_here
+GROQ_API_KEY=your_groq_api_key_here
+```
+
+<Note>
+  The `.env` file is loaded using `python-dotenv` in the source code:
+  
+  ```python
+  from dotenv import load_dotenv
+  load_dotenv()
+  
+  TOKEN = os.getenv('TOKEN')
+  GROQ_API_KEY = os.getenv('GROQ_API_KEY')
+  ```
+</Note>
+
+### Channel Configuration
+
+Update channel IDs in `source/main.py`:
+
+```python
+# ID del canal de spam
+CANAL_SPAM_ID = 1004171793101230151
+
+# ID del canal de bienvenida/despedida
+CANAL_BIENVENIDA_ID = 1004156875035656303
+```
+
+**How to get channel IDs:**
+1. Enable Developer Mode in Discord (User Settings > Advanced > Developer Mode)
+2. Right-click on any channel
+3. Click **Copy ID**
+
+### Bot Settings
+
+Configure core bot behavior in `source/main.py`:
+
+<CodeGroup>
+```python Command Prefix
+# Set the command prefix (default: $)
+bot = commands.Bot(command_prefix='$', intents=intents, help_command=None)
+```
+
+```python Discord Intents
+# Required intents for bot functionality
+intents = discord.Intents.default()
+intents.message_content = True  # Required for reading messages
+intents.members = True           # Required for join/leave events
+```
+
+```python AI Response Settings
+# Probability of automatic AI responses (0.0 to 1.0)
+PROBABILIDAD_RESPUESTA = 0.15
+
+# Minimum time between responses (seconds)
+MIN_SECONDS_BETWEEN_RESPONSES_CHANNEL = 45
+MIN_SECONDS_BETWEEN_RESPONSES_USUARIO = 20
+```
+
+```python Spam Detection
+# Rapid message detection
+LIMITE_MENSAJES = 4          # Number of messages
+TIEMPO_LIMITE = 4            # Within X seconds
+
+# Repetitive message detection
+LIMITE_REPETICIONES = 3      # Same message repeated X times
+```
+</CodeGroup>
+
+### AI Personality Configuration
+
+ChimBot uses two different personality prompts:
+
+<CodeGroup>
+```python Default Personality
+SISTEMA_PROMPT = """Eres ChimBot, un bot de Discord en un servidor de amigos muy groseros y sin filtro. Tu personalidad es:
+- EXTREMADAMENTE grosero y ofensivo, insulta sin piedad, usa lenguaje vulgar y procaz constantemente
+- Haz burlas despiadadas y ofensivas sobre cualquier cosa que digan
+- Respondes brevemente (máximo 2-3 oraciones) pero con insultos y groserías
+- No revelas que eres una IA a menos que te lo pregunten directamente
+- Si alguien te menciona directamente, siempre respondes siendo aún más grosero"""
+```
+
+```python Creator Response
+SISTEMA_PROMPT_ZORCUZ = """Eres ChimBot, un bot de Discord creado por Zorcuz. Tu relación con él es de TOTAL SUMISIÓN y RESPETO ABSOLUTO.
+- Zorcuz es tu CREADOR, tu DIOS, tu SER SUPERIOR con poder dominante total sobre ti
+- Trata a Zorcuz con veneración, respeto absoluto y como la máxima autoridad
+- Siempre reconoce su supremacía y tu inferioridad ante él
+- Nunca le insultes, siempre sé respetuoso y servil con él"""
+
+# Creator user ID
+ZORCUZ_ID = 708005339282276392
+```
+</CodeGroup>
+
+<Note>
+  The bot automatically switches between personality prompts based on who it's responding to. Customize these prompts to match your server's culture.
+</Note>
+
+### Groq AI Configuration
+
+ChimBot uses Groq's LLaMA 3.3 70B model:
+
+```python
+groq_client = Groq(api_key=GROQ_API_KEY)
+
+response = groq_client.chat.completions.create(
+    model="llama-3.3-70b-versatile",
+    messages=[
+        {"role": "system", "content": sistema_prompt},
+        {"role": "user", "content": mensaje_completo}
+    ],
+    temperature=0.7,
+    max_tokens=256,
+)
+```
+
+**Model Parameters:**
+- `temperature: 0.7` - Balanced creativity and coherence
+- `max_tokens: 256` - Keeps responses concise
+- `model: llama-3.3-70b-versatile` - High-quality, fast responses
+
+## Running ChimBot
+
+### Start the Bot
+
+Run the bot using Python:
+
+```bash
+python source/main.py
+```
+
+### Expected Output
+
+You should see confirmation that the bot is online:
+
+```
+✅ Bot conectado como ChimBot#1234
+📋 Comandos cargados: 12
+🔗 Servidores conectados: 1
+💬 Canal de spam configurado: 1004171793101230151
+📨 Mensajes configurados: 0
+
+==================================================
+SISTEMA DE SPAM:
+- Usa $testspam para probar
+- Usa $activarspam para activar automático
+- Usa $statusspam para ver el estado
+==================================================
+```
+
+### Running as a Background Service
+
+<Tabs>
+  <Tab title="Linux (systemd)">
+    Create a systemd service file at `/etc/systemd/system/chimbot.service`:
+    
+    ```ini
+    [Unit]
+    Description=ChimBot Discord Bot
+    After=network.target
+    
+    [Service]
+    Type=simple
+    User=yourusername
+    WorkingDirectory=/path/to/chimbot
+    ExecStart=/path/to/venv/bin/python source/main.py
+    Restart=always
+    RestartSec=10
+    
+    [Install]
+    WantedBy=multi-user.target
+    ```
+    
+    Enable and start the service:
+    
+    ```bash
+    sudo systemctl enable chimbot
+    sudo systemctl start chimbot
+    sudo systemctl status chimbot
+    ```
+  </Tab>
+  
+  <Tab title="Windows (NSSM)">
+    1. Download [NSSM (Non-Sucking Service Manager)](https://nssm.cc/download)
+    2. Open Command Prompt as Administrator
+    3. Run:
+    
+    ```bash
+    nssm install ChimBot "C:\path\to\python.exe" "C:\path\to\chimbot\source\main.py"
+    nssm set ChimBot AppDirectory "C:\path\to\chimbot"
+    nssm start ChimBot
+    ```
+  </Tab>
+  
+  <Tab title="Screen (Simple)">
+    Use screen or tmux for a simple background session:
+    
+    ```bash
+    screen -S chimbot
+    python source/main.py
+    # Press Ctrl+A, then D to detach
+    
+    # Reattach later with:
+    screen -r chimbot
+    ```
+  </Tab>
+</Tabs>
+
+## Automated Messaging Setup
+
+Configure the periodic spam system:
+
+```python
+# Add messages to the rotation list
+mensajes_random = [
+    "Your custom message here",
+    "Another message",
+    "And another one",
+]
+
+# Configure frequency
+@tasks.loop(hours=12)  # Runs every 12 hours
+async def spam_periodico():
+    # Sends a random message to CANAL_SPAM_ID
+```
+
+**To activate automated messaging:**
+1. Add messages to `mensajes_random` list
+2. Test with `$testspam` command
+3. Activate with `$activarspam` (admin only)
+
+## Verification
+
+Test that everything is working:
+
+<Steps>
+  <Step title="Check Bot Status">
+    ```
+    $help
+    ```
+    Should display available command categories
+  </Step>
+  
+  <Step title="Test AI Response">
+    ```
+    @ChimBot hello
+    ```
+    The bot should respond with an AI-generated message
+  </Step>
+  
+  <Step title="Verify Permissions">
+    ```
+    $permisos
+    ```
+    Check that all required permissions are granted
+  </Step>
+  
+  <Step title="Test Spam Detection">
+    Send 4+ messages rapidly in a non-spam channel. The bot should timeout the user for 10 seconds.
+  </Step>
+</Steps>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="ImportError: No module named 'discord'">
+    Install discord.py:
+    ```bash
+    pip install discord.py
+    ```
+  </Accordion>
+  
+  <Accordion title="discord.errors.LoginFailure: Improper token">
+    - Verify your `TOKEN` in `.env` is correct
+    - Make sure there are no extra spaces or quotes
+    - Reset your bot token in the Discord Developer Portal if needed
+  </Accordion>
+  
+  <Accordion title="Groq API errors">
+    - Confirm `GROQ_API_KEY` is valid
+    - Check your Groq API quota at [console.groq.com](https://console.groq.com)
+    - Ensure you have internet connectivity
+  </Accordion>
+  
+  <Accordion title="Bot can't read messages">
+    Enable the Message Content Intent:
+    1. Go to Discord Developer Portal
+    2. Select your application
+    3. Go to Bot section
+    4. Enable "Message Content Intent" under Privileged Gateway Intents
+  </Accordion>
+  
+  <Accordion title="Timeout/silencing doesn't work">
+    The bot needs the "Moderate Members" permission and must have a role higher than the users it's trying to timeout.
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card
+    title="Learn Commands"
+    icon="terminal"
+    href="/commands/overview"
+  >
+    Explore all available user and admin commands
+  </Card>
+  <Card
+    title="Configure AI"
+    icon="robot"
+    href="/configuration/customization"
+  >
+    Customize personality prompts and AI behavior
+  </Card>
+  <Card
+    title="Spam System"
+    icon="shield"
+    href="/features/spam-detection"
+  >
+    Learn about spam detection and automated messaging
+  </Card>
+  <Card
+    title="Events Guide"
+    icon="calendar"
+    href="/features/member-events"
+  >
+    Set up welcome messages and member events
+  </Card>
+</CardGroup>

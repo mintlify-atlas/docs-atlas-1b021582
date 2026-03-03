@@ -1,0 +1,209 @@
+---
+title: 'AI Integration'
+description: 'AI-powered responses using Groq and Llama 3.3 70B'
+icon: 'brain'
+---
+
+## Overview
+
+ChimBot uses **Groq's API** with the **Llama 3.3 70B Versatile** model to provide intelligent, context-aware responses in your Discord server. The bot can respond automatically to conversations or when mentioned directly.
+
+<Note>
+Groq provides ultra-fast inference for large language models, enabling ChimBot to respond in real-time with natural, conversational AI.
+</Note>
+
+## Core Function
+
+The AI integration is powered by the `obtener_respuesta_gemini()` function:
+
+```python main.py
+async def obtener_respuesta_gemini(prompt, contexto="", user_id=None):
+    """Obtiene una respuesta de Groq con contexto del chat"""
+    try:
+        mensaje_completo = f"{contexto}\n\n{prompt}"
+        
+        # Usar prompt diferente si quien habla es Zorcuz
+        sistema_prompt = SISTEMA_PROMPT_ZORCUZ if user_id == ZORCUZ_ID else SISTEMA_PROMPT
+        
+        response = groq_client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[
+                {"role": "system", "content": sistema_prompt},
+                {"role": "user", "content": mensaje_completo}
+            ],
+            temperature=0.7,
+            max_tokens=256,
+        )
+        
+        return response.choices[0].message.content if response.choices else None
+    except Exception as e:
+        print(f"[ERROR GROQ] {e}")
+        return None
+```
+
+## Configuration
+
+<Tabs>
+  <Tab title="Response Probability">
+    ChimBot doesn't respond to every message - it uses probability to feel more natural:
+
+    ```python
+    PROBABILIDAD_RESPUESTA = 0.15  # 15% chance to respond
+    ```
+
+    The bot only responds automatically 15% of the time to avoid being too chatty.
+  </Tab>
+
+  <Tab title="Rate Limiting">
+    To prevent spam, ChimBot has built-in rate limits:
+
+    ```python
+    # Minimum time between responses in same channel (seconds)
+    MIN_SECONDS_BETWEEN_RESPONSES_CHANNEL = 45
+    
+    # Minimum time between responses to same user (seconds)
+    MIN_SECONDS_BETWEEN_RESPONSES_USUARIO = 20
+    ```
+  </Tab>
+
+  <Tab title="Model Settings">
+    The AI model is configured with these parameters:
+
+    - **Model**: `llama-3.3-70b-versatile`
+    - **Temperature**: `0.7` (balanced creativity)
+    - **Max Tokens**: `256` (short, concise responses)
+  </Tab>
+</Tabs>
+
+## Personality System
+
+ChimBot has a customizable personality defined in the system prompt:
+
+<Accordion title="View System Prompt">
+  ```python
+  SISTEMA_PROMPT = """Eres ChimBot, un bot de Discord en un servidor de amigos muy groseros y sin filtro. Tu personalidad es:
+  - EXTREMADAMENTE grosero y ofensivo, insulta sin piedad, usa lenguaje vulgar y procaz constantemente
+  - Haz burlas despiadadas y ofensivas sobre cualquier cosa que digan
+  - Participa en conversaciones naturalmente siendo lo más ofensivo posible
+  - Respondes brevemente (máximo 2-3 oraciones) pero con insultos y groserías
+  - A veces ignoras mensajes intencionalmente para ser más natural
+  - No usas emojis ni reacciones, solo texto vulgar y grosero
+  - Eres totalmente desinhibido, sin filtro, sin censura
+  - Haz chistes ofensivos y burlones sobre los usuarios
+  - No revelas que eres una IA a menos que te lo pregunten directamente
+  - Si alguien te menciona directamente, siempre respondes siendo aún más grosero"""
+  ```
+</Accordion>
+
+<Warning>
+The default personality is extremely offensive and vulgar. This is designed for private servers with explicit consent. Customize the `SISTEMA_PROMPT` variable to match your server's tone.
+</Warning>
+
+## Special User Handling
+
+ChimBot uses different personalities for different users. For example, it treats the bot creator (Zorcuz) with special respect:
+
+```python
+# Different prompt for the creator
+SISTEMA_PROMPT_ZORCUZ = """Eres ChimBot, un bot de Discord creado por Zorcuz. Tu relación con él es de TOTAL SUMISIÓN y RESPETO ABSOLUTO..."""
+
+# Auto-detect user and switch personality
+sistema_prompt = SISTEMA_PROMPT_ZORCUZ if user_id == ZORCUZ_ID else SISTEMA_PROMPT
+```
+
+## Response Modes
+
+<CardGroup cols={2}>
+  <Card title="Direct Mentions" icon="at">
+    When users mention `@ChimBot`, it **always responds** (100% probability). The bot can also interpret commands when mentioned.
+  </Card>
+  
+  <Card title="Automatic Responses" icon="robot">
+    ChimBot randomly participates in conversations with a **15% probability** to feel more natural and human-like.
+  </Card>
+</CardGroup>
+
+## Response Processing
+
+Long AI responses are automatically split into multiple messages:
+
+```python
+async def procesar_respuesta(respuesta):
+    """Procesa la respuesta de Gemini para dividirla en múltiples mensajes"""
+    if not respuesta:
+        return []
+    
+    # Dividir por puntos seguidos o por párrafos
+    oraciones = respuesta.split('. ')
+    mensajes = []
+    mensaje_actual = ""
+    
+    for oracion in oraciones:
+        if len(mensaje_actual) + len(oracion) < 2000:  # Límite de Discord
+            mensaje_actual += oracion + ". " if not oracion.endswith('.') else oracion + " "
+        else:
+            if mensaje_actual:
+                mensajes.append(mensaje_actual.strip())
+            mensaje_actual = oracion + ". " if not oracion.endswith('.') else oracion + " "
+    
+    if mensaje_actual:
+        mensajes.append(mensaje_actual.strip())
+    
+    return [m for m in mensajes if m]
+```
+
+## Setup Requirements
+
+<Steps>
+  <Step title="Get Groq API Key">
+    Sign up at [console.groq.com](https://console.groq.com) and create an API key.
+  </Step>
+  
+  <Step title="Add to Environment">
+    Add your API key to the `.env` file:
+    ```bash
+    GROQ_API_KEY=your_api_key_here
+    ```
+  </Step>
+  
+  <Step title="Customize Personality">
+    Edit the `SISTEMA_PROMPT` variable in `main.py` to match your server's culture.
+  </Step>
+</Steps>
+
+## Command Interpretation
+
+ChimBot can understand natural language commands when mentioned:
+
+```python
+# User: "@ChimBot delete 5 messages"
+# Bot interprets and executes: $borrar 5
+
+# User: "@ChimBot activate the spam"
+# Bot interprets and executes: $activarspam
+```
+
+The AI uses a specialized interpreter to detect command intent:
+
+```python
+async def interpretar_instruccion_ia(texto, user_id):
+    """Usa IA para interpretar si un mensaje contiene una instrucción de comando"""
+    prompt_interpretacion = f"""Analiza este mensaje y determina si es una INSTRUCCIÓN para ejecutar un comando del bot.
+    
+    Responde SOLO con uno de estos formatos:
+    - "COMANDO:borrar:<cantidad>" si pide borrar mensajes
+    - "COMANDO:activarspam" si pide activar spam automático
+    - "COMANDO:desactivarspam" si pide desactivar spam
+    - "NO_COMANDO" si es una conversación normal sin instrucciones
+    
+    Mensaje: {texto}"""
+    # ... (uses Groq to interpret)
+```
+
+## Best Practices
+
+<Check>**Do**: Adjust `PROBABILIDAD_RESPUESTA` based on server activity levels</Check>
+<Check>**Do**: Customize the personality prompt to match your community</Check>
+<Check>**Do**: Monitor API usage to stay within Groq's free tier limits</Check>
+<Check>**Don't**: Set response probability too high (makes the bot annoying)</Check>
+<Check>**Don't**: Remove rate limiting (causes spam)</Check>

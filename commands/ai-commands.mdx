@@ -1,0 +1,515 @@
+---
+title: 'AI Commands'
+description: 'Natural language commands interpreted by AI using Groq'
+---
+
+ChimBot supports natural language commands through AI interpretation. Users can mention `@chimbot` and give instructions in plain language, which are then interpreted and executed.
+
+## How It Works
+
+<Steps>
+  <Step title="User Mentions Bot">
+    User sends a message mentioning `@chimbot` with an instruction
+  </Step>
+  <Step title="AI Interpretation">
+    The `interpretar_instruccion_ia()` function analyzes the message using Groq's LLM
+  </Step>
+  <Step title="Command Detection">
+    AI determines if the message contains a valid command instruction
+  </Step>
+  <Step title="Execution or Response">
+    If a command is detected, it's executed; otherwise, the bot responds conversationally
+  </Step>
+</Steps>
+
+**Source:** `main.py:270-302` (interpretation), `main.py:304-404` (execution)
+
+---
+
+## AI Interpretation System
+
+### The interpretar_instruccion_ia() Function
+
+This function uses Groq's LLaMA model to interpret natural language:
+
+```python
+async def interpretar_instruccion_ia(texto, user_id):
+    """Usa IA para interpretar si un mensaje contiene una instrucción de comando"""
+    
+    prompt_interpretacion = f"""Analiza este mensaje y determina si es una INSTRUCCIÓN para ejecutar un comando del bot.
+
+Responde SOLO con uno de estos formatos:
+- "COMANDO:borrar:<cantidad>" si pide borrar mensajes
+- "COMANDO:activarspam" si pide activar spam automático
+- "COMANDO:desactivarspam" si pide desactivar spam
+- "COMANDO:statusspam" si pide ver estado del spam
+- "COMANDO:testspam" si pide enviar un mensaje de prueba
+- "COMANDO:ayuda" si pide ayuda o list de comandos
+- "NO_COMANDO" si es una conversación normal sin instrucciones
+
+Mensaje: {texto}"""
+```
+
+**Source:** `main.py:270-302`
+
+### AI Model Configuration
+
+<ParamField path="model" type="string" default="llama-3.3-70b-versatile">
+  Groq's LLaMA 3.3 70B model for command interpretation
+</ParamField>
+
+<ParamField path="temperature" type="float" default="0.3">
+  Low temperature for consistent, deterministic command detection
+</ParamField>
+
+<ParamField path="max_tokens" type="integer" default="100">
+  Limited tokens since responses are short command identifiers
+</ParamField>
+
+---
+
+## Available AI Commands
+
+### Delete Messages
+
+Delete a specified number of messages from the channel.
+
+<CodeGroup>
+```text English
+@chimbot delete 5 messages
+@chimbot remove the last 10 messages
+```
+
+```text Spanish
+@chimbot borra 5 mensajes
+@chimbot elimina los 10 últimos
+```
+</CodeGroup>
+
+**Command Format:** `COMANDO:borrar:<cantidad>`
+
+**Permission:** Administrator or Zorcuz
+
+#### Implementation
+
+```python
+if comando_str.startswith("COMANDO:borrar:"):
+    if not puede_ejecutar_admin:
+        await message.channel.send("No tienes permisos para usar comandos de administrador.")
+        return True
+    
+    try:
+        cantidad = int(comando_str.split(':')[2])
+        if cantidad <= 0 or cantidad > 100:
+            await message.channel.send("Debes especificar una cantidad entre 1 y 100.")
+            return True
+        
+        mensajes_borrados = await message.channel.purge(limit=cantidad)
+        confirmacion = await message.channel.send(f"Se borraron **{len(mensajes_borrados)}** mensajes.")
+        await confirmacion.delete(delay=3)
+```
+
+**Source:** `main.py:316-331`
+
+---
+
+### Activate Spam
+
+Enable the automated spam system.
+
+<CodeGroup>
+```text Variations
+@chimbot activate spam
+@chimbot activa el spam
+@chimbot turn on automatic spam
+@chimbot start sending spam messages
+```
+</CodeGroup>
+
+**Command Format:** `COMANDO:activarspam`
+
+**Permission:** Administrator or Zorcuz
+
+#### Response Messages
+
+<ResponseExample>
+```text Success
+Spam automático **ACTIVADO**.
+```
+</ResponseExample>
+
+<ResponseExample>
+```text Already Active
+El spam automático ya está activo.
+```
+</ResponseExample>
+
+<ResponseExample>
+```text No Messages
+No hay mensajes configurados.
+```
+</ResponseExample>
+
+**Source:** `main.py:336-351`
+
+---
+
+### Deactivate Spam
+
+Disable the automated spam system.
+
+<CodeGroup>
+```text Variations
+@chimbot deactivate spam
+@chimbot desactiva el spam
+@chimbot stop the spam
+@chimbot detén el spam
+```
+</CodeGroup>
+
+**Command Format:** `COMANDO:desactivarspam`
+
+**Permission:** Administrator or Zorcuz
+
+#### Implementation
+
+```python
+elif comando_str == "COMANDO:desactivarspam":
+    if not puede_ejecutar_admin:
+        await message.channel.send("No tienes permisos para usar comandos de administrador.")
+        return True
+    
+    if spam_periodico.is_running():
+        spam_periodico.cancel()
+        await message.channel.send("Spam automático **DESACTIVADO**.")
+        print(f"[COMANDO IA] Spam desactivado por {message.author}")
+    else:
+        await message.channel.send("El spam automático ya está desactivado.")
+    return True
+```
+
+**Source:** `main.py:353-364`
+
+---
+
+### Check Spam Status
+
+View the current status of the spam system.
+
+<CodeGroup>
+```text Variations
+@chimbot spam status
+@chimbot status del spam
+@chimbot how's the spam system
+@chimbot estado del spam
+```
+</CodeGroup>
+
+**Command Format:** `COMANDO:statusspam`
+
+**Permission:** Anyone (no admin required)
+
+#### Response
+
+```
+**Estado del Sistema de Spam:**
+**ACTIVO**
+Mensajes configurados: 25
+Canal: #spam-channel
+```
+
+**Source:** `main.py:366-373`
+
+---
+
+### Test Spam
+
+Send a test message to the spam channel.
+
+<CodeGroup>
+```text Variations
+@chimbot send a test message
+@chimbot envía un mensaje de prueba
+@chimbot test the spam
+@chimbot prueba el spam
+```
+</CodeGroup>
+
+**Command Format:** `COMANDO:testspam`
+
+**Permission:** Anyone (no admin required)
+
+**Source:** `main.py:375-389`
+
+---
+
+### Help Command
+
+Request help information.
+
+<CodeGroup>
+```text Variations
+@chimbot help
+@chimbot ayuda
+@chimbot show me the commands
+@chimbot what can you do
+```
+</CodeGroup>
+
+**Command Format:** `COMANDO:ayuda`
+
+**Permission:** Anyone (content varies by permission level)
+
+**Source:** `main.py:391-397`
+
+---
+
+## Permission System
+
+AI commands have a special permission system:
+
+```python
+es_admin = message.author.guild_permissions.administrator
+es_zorcuz = user_id == ZORCUZ_ID
+
+# Zorcuz is considered admin for these purposes
+puede_ejecutar_admin = es_admin or es_zorcuz
+
+if not puede_ejecutar_admin:
+    await message.channel.send("No tienes permisos para usar comandos de administrador.")
+    return True
+```
+
+### Permission Levels
+
+<Tabs>
+  <Tab title="Regular Users">
+    - `statusspam` - Check spam status
+    - `testspam` - Send test message
+    - `ayuda` - Request help
+  </Tab>
+  <Tab title="Administrators">
+    All regular user commands plus:
+    - `borrar` - Delete messages
+    - `activarspam` - Enable spam
+    - `desactivarspam` - Disable spam
+  </Tab>
+  <Tab title="Zorcuz">
+    Full access to all AI commands, treated as administrator even without formal Discord permissions
+  </Tab>
+</Tabs>
+
+**Source:** `main.py:306-310`
+
+---
+
+## Conversational Responses
+
+When `@chimbot` is mentioned without a valid command, the bot responds conversationally:
+
+### Conversation Flow
+
+```python
+if comando_detectado != "NO_COMANDO":
+    # Es un comando, intentar ejecutarlo
+    fue_ejecutado = await ejecutar_comando_ia(message, comando_detectado, message.author.id)
+    if fue_ejecutado:
+        return  # No responder como IA si se ejecutó un comando
+
+# Si no es comando o la ejecución falló, responder como IA
+async with message.channel.typing():
+    respuesta = await obtener_respuesta_gemini(
+        texto_limpio,
+        f"Alguien te mencionó en Discord",
+        user_id=message.author.id
+    )
+```
+
+**Source:** `main.py:723-746`
+
+### Personality System
+
+The bot has different personalities based on who's talking:
+
+<Tabs>
+  <Tab title="Regular Users">
+    **System Prompt:** `SISTEMA_PROMPT`
+    
+    Extremely vulgar and offensive personality:
+    - Uses profanity and insults
+    - Makes offensive jokes
+    - Responds in 2-3 sentences max
+    - No emojis, text only
+    - Completely uninhibited
+    
+    **Source:** `main.py:40-50`
+  </Tab>
+  <Tab title="Zorcuz">
+    **System Prompt:** `SISTEMA_PROMPT_ZORCUZ`
+    
+    Submissive and respectful personality:
+    - Treats Zorcuz as creator/god
+    - Total respect and veneration
+    - Obedient and loyal
+    - Never insults Zorcuz
+    - Acknowledges his supreme authority
+    
+    **Source:** `main.py:53-63`
+  </Tab>
+</Tabs>
+
+### AI Model for Conversations
+
+<ParamField path="model" type="string" default="llama-3.3-70b-versatile">
+  Groq's LLaMA model for generating responses
+</ParamField>
+
+<ParamField path="temperature" type="float" default="0.7">
+  Higher temperature for more creative, varied responses
+</ParamField>
+
+<ParamField path="max_tokens" type="integer" default="256">
+  Longer responses allowed for conversations
+</ParamField>
+
+**Source:** `main.py:212-239`
+
+---
+
+## Automatic Responses
+
+The bot can also respond automatically without being mentioned:
+
+### Response Probability
+
+```python
+PROBABILIDAD_RESPUESTA = 0.15  # 15% chance to respond automatically
+```
+
+### Rate Limiting
+
+<ParamField path="MIN_SECONDS_BETWEEN_RESPONSES_CHANNEL" type="integer" default="45">
+  Minimum seconds between automatic responses in the same channel
+</ParamField>
+
+<ParamField path="MIN_SECONDS_BETWEEN_RESPONSES_USUARIO" type="integer" default="20">
+  Minimum seconds between responses to the same user
+</ParamField>
+
+### Automatic Response Logic
+
+```python
+elif await debe_responder() and not message.author.bot and message.channel.id != CANAL_SPAM_ID:
+    # Responder automáticamente a veces (con 15% de probabilidad)
+    async with message.channel.typing():
+        respuesta = await obtener_respuesta_gemini(
+            message.content,
+            f"{message.author.name} está hablando en el chat",
+            user_id=message.author.id
+        )
+```
+
+**Source:** `main.py:749-764`
+
+<Info>
+Automatic responses are disabled in the spam channel to prevent noise.
+</Info>
+
+---
+
+## Error Handling
+
+AI commands include comprehensive error handling:
+
+<CodeGroup>
+```python Permission Errors
+if not puede_ejecutar_admin:
+    await message.channel.send("No tienes permisos para usar comandos de administrador.")
+    return True
+```
+
+```python Validation Errors
+if cantidad <= 0 or cantidad > 100:
+    await message.channel.send("Debes especificar una cantidad entre 1 y 100.")
+    return True
+```
+
+```python General Errors
+except Exception as e:
+    print(f"[ERROR EJECUCIÓN COMANDO IA] {e}")
+    await message.channel.send(f"Error al ejecutar comando: {e}")
+    return True
+```
+</CodeGroup>
+
+**Source:** `main.py:401-404`
+
+---
+
+## Logging
+
+All AI command executions are logged:
+
+```python
+print(f"[COMANDO IA] {message.author} borró {len(mensajes_borrados)} mensajes")
+print(f"[COMANDO IA] Spam activado por {message.author}")
+print(f"[COMANDO IA] Spam desactivado por {message.author}")
+print(f"[COMANDO IA] Test spam enviado por {message.author}")
+```
+
+This helps track command usage and debug issues.
+
+---
+
+## Example Interactions
+
+### Command Execution
+
+```
+User: @chimbot delete the last 5 messages
+ChimBot: [Deletes 5 messages]
+         Se borraron **5** mensajes.
+```
+
+### Conversation
+
+```
+User: @chimbot how are you?
+ChimBot: [AI-generated conversational response based on personality]
+```
+
+### Permission Denial
+
+```
+Regular User: @chimbot activate the spam
+ChimBot: No tienes permisos para usar comandos de administrador.
+```
+
+---
+
+## Best Practices
+
+<Tip>
+**Be Natural:** The AI interprets natural language, so you don't need exact syntax. "delete 5 messages" and "borra los últimos 5" both work.
+</Tip>
+
+<Tip>
+**Context Awareness:** The bot understands both English and Spanish commands naturally.
+</Tip>
+
+<Warning>
+**Rate Limits:** AI interpretation uses API credits. Excessive use may hit rate limits.
+</Warning>
+
+---
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Traditional Commands" icon="terminal" href="/commands/user-commands">
+    Use prefix-based commands for more reliable execution
+  </Card>
+  <Card title="Configuration" icon="gear" href="/configuration/customization">
+    Configure AI behavior and prompts
+  </Card>
+</CardGroup>
