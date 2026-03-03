@@ -1,0 +1,77 @@
+{
+  "projectType": "cli-tool",
+  "projectName": "ChimBot",
+  "projectDescription": "A feature-rich Discord bot with AI-powered responses, spam detection, and automated moderation capabilities.",
+  "theme": "aspen",
+  "primaryColor": "#5865F2",
+  "lightColor": "#7289DA",
+  "darkColor": "#4752C4",
+  "navigation": {
+    "groups": [
+      {
+        "group": "Get Started",
+        "pages": [
+          "introduction",
+          "quickstart",
+          "installation"
+        ]
+      },
+      {
+        "group": "Features",
+        "pages": [
+          "features/ai-integration",
+          "features/spam-detection",
+          "features/member-events",
+          "features/periodic-tasks"
+        ]
+      },
+      {
+        "group": "Commands",
+        "pages": [
+          "commands/overview",
+          "commands/user-commands",
+          "commands/admin-commands",
+          "commands/ai-commands"
+        ]
+      },
+      {
+        "group": "Configuration",
+        "pages": [
+          "configuration/environment",
+          "configuration/customization",
+          "configuration/permissions"
+        ]
+      },
+      {
+        "group": "Development",
+        "pages": [
+          "development/architecture",
+          "development/contributing"
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "AI-powered responses using Groq LLaMA 3.3",
+    "Automated spam detection and moderation",
+    "Custom command system with user and admin commands",
+    "Periodic automated messaging",
+    "Member welcome and farewell events",
+    "AI-based command interpretation",
+    "Configurable bot personality and responses"
+  ],
+  "publicApiSurface": [
+    "$help - Display help menu",
+    "$borrar <cantidad> - Delete messages (admin)",
+    "$activarspam - Enable periodic spam (admin)",
+    "$desactivarspam - Disable periodic spam (admin)",
+    "$statusspam - Check spam system status",
+    "$testspam - Send test message",
+    "$permisos - View bot permissions",
+    "@chimbot <message> - AI-powered interaction",
+    "detectar_spam_rapido() - Spam detection function",
+    "detectar_spam_repetido() - Repeated message detection",
+    "obtener_respuesta_gemini() - Get AI response",
+    "interpretar_instruccion_ia() - AI command interpretation"
+  ]
+}
